@@ -36,11 +36,14 @@ class HyperParameters:
         self.max_seq_length = 256
         self.gradient_accumulation_steps = 1
         self.num_warmup_steps = 5
-        self.num_training_steps = 10
+        self.num_training_steps = 150
 
         # This is either provided by the user or it will be set when the
         # model weights are downloaded.
         self.weights_cache_dir = ""
+        
+        # Wandb API key
+        self.wandb_api_key = None
 
 
 hyperparams = HyperParameters()
@@ -187,11 +190,29 @@ def wrap_with_accelerator(model, hyperparams):
     return accelerator, model, optimizer, train_dataloader, lr_scheduler
 
 
-def finetune_model(model, hyperparams, accelerator, train_dataloader, optimizer, lr_scheduler):
+def finetune_model(log_prefix, model, hyperparams, accelerator, train_dataloader, optimizer, lr_scheduler):
     model.train()
     total_loss = 0
     optimizer.zero_grad()
     train_dataloader = enumerate(train_dataloader)
+
+    # Initialize wandb tracking with log_prefix to distinguish different models
+    config = vars(hyperparams)
+    config["model_type"] = log_prefix  # Add model type to config
+    
+    # Set wandb API key if provided
+    if hyperparams.wandb_api_key:
+        import os
+        os.environ["WANDB_API_KEY"] = hyperparams.wandb_api_key
+    
+    accelerator.init_trackers(
+        project_name=f"te_llama_training",  # Include prefix in project name
+        config=config,
+    )
+
+    # Function to measure GPU memory usage
+    def get_gpu_memory_usage():
+        return torch.cuda.memory_allocated() / (1024 ** 3)  # Convert to GB
 
     # Warmup iters
     for _ in range(hyperparams.num_warmup_steps):
@@ -211,8 +232,9 @@ def finetune_model(model, hyperparams, accelerator, train_dataloader, optimizer,
     torch.cuda.synchronize()
 
     start.record()
+    step_start_time = time.time()
     # Training iters
-    for _ in range(hyperparams.num_training_steps):
+    for step_idx in range(hyperparams.num_training_steps):
         step, batch = next(train_dataloader)
         with accelerator.accumulate(model):
             outputs = model(**batch)
@@ -222,13 +244,31 @@ def finetune_model(model, hyperparams, accelerator, train_dataloader, optimizer,
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
+            
+        # Calculate time per step and log metrics
+        step_end_time = time.time()
+        step_time_ms = (step_end_time - step_start_time) * 1000
+        step_start_time = step_end_time
+        
+        # Log metrics
+        gpu_memory_used = get_gpu_memory_usage()
+        metrics = {
+            f"{log_prefix}/loss": loss.detach().float().item(),
+            f"{log_prefix}/step_time_ms": step_time_ms,
+            f"{log_prefix}/gpu_memory_gb": gpu_memory_used,
+        }
+        accelerator.log(metrics, step=step_idx)
+        
     torch.cuda.synchronize()
     end.record()
+    total_time_ms = start.elapsed_time(end)
+    avg_time_per_step = total_time_ms / hyperparams.num_training_steps
+       
     accelerator.end_training()
 
     print(
-        f"{hyperparams.num_training_steps} finetuning steps complete!\nAverage time taken per step:"
-        f" {(start.elapsed_time(end)/hyperparams.num_training_steps):.0f} milliseconds"
+        f"[{log_prefix}] {hyperparams.num_training_steps} finetuning steps complete!\nAverage time taken per step:"
+        f" {avg_time_per_step:.0f} milliseconds"
     )
 
 
