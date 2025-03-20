@@ -177,9 +177,9 @@ class TestLinearCrossEntropyWithTokenEntropy:
         
 class TestLinearCrossEntropy:
     def generate_hyper(self):
-        self.num_tokens = 80
+        self.num_tokens = 8 * 256
         self.hidden_size = 4096
-        self.vocab_size = 152064
+        self.vocab_size = 128256
         self.dtype = torch.bfloat16
         self.ignore_index = -100 # this is the default value in torch's cross entropy
 

@@ -15,8 +15,8 @@ from transformer_engine.pytorch.triton.linear_cross_entropy_with_token_entropy i
 _dedicated_stream, _dedicated_events = None, None
 
 @triton.autotune(
-    configs=[triton.Config({"BLOCK_SIZE_M": 32, "BLOCK_SIZE_N": 256, "BLOCK_SIZE_K": 64},
-                            num_stages=3, num_warps=4)],
+    configs=[triton.Config({"BLOCK_SIZE_M": 64, "BLOCK_SIZE_N": 256, "BLOCK_SIZE_K": 64},
+                            num_stages=3, num_warps=8)],
     key=["num_tokens", "hidden_size", "vocab_size"],
 )
 @triton.jit
@@ -332,7 +332,7 @@ def efficient_entropy_forward(hidden: torch.Tensor,
     assert maximum.is_contiguous() and accumulate.is_contiguous()
 
     # intermediate buffers
-    vocab_per_split = 1024
+    vocab_per_split = 32768
     assert vocab_per_split % 256 == 0
     num_splits = (vocab_size + vocab_per_split - 1) // vocab_per_split
 
@@ -420,8 +420,8 @@ def efficient_entropy_forward(hidden: torch.Tensor,
     return logprobs, maximum, accumulate, num_valid_tokens
 
 @triton.autotune(
-    configs=[triton.Config({"BLOCK_SIZE_M": 32, "BLOCK_SIZE_N": 256, "BLOCK_SIZE_K": 64, "GROUP_SIZE_M": 16},
-                            num_stages=3, num_warps=4)],
+    configs=[triton.Config({"BLOCK_SIZE_M": 128, "BLOCK_SIZE_N": 256, "BLOCK_SIZE_K": 64, "GROUP_SIZE_M": 16},
+                            num_stages=3, num_warps=8)],
     key=["num_tokens", "hidden_size", "vocab_size"],
 )
 @triton.jit

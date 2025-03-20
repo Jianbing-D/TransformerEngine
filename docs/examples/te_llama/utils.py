@@ -256,29 +256,30 @@ def finetune_model(log_prefix, model, hyperparams, accelerator, train_dataloader
     step_start_time = time.time()
     # Training iters
     for step_idx in range(hyperparams.num_training_steps):
-        step, batch = next(train_dataloader)
-        with accelerator.accumulate(model):
-            outputs = model(**batch)
-            loss = outputs.loss
-            total_loss += loss.detach().float()
-            accelerator.backward(loss)
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+        with torch.cuda.nvtx.range(f"iteration_{step_idx}"):
+            step, batch = next(train_dataloader)
+            with accelerator.accumulate(model):
+                outputs = model(**batch)
+                loss = outputs.loss
+                total_loss += loss.detach().float()
+                accelerator.backward(loss)
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
+                
+            # Calculate time per step and log metrics
+            step_end_time = time.time()
+            step_time_ms = (step_end_time - step_start_time) * 1000
+            step_start_time = step_end_time
             
-        # Calculate time per step and log metrics
-        step_end_time = time.time()
-        step_time_ms = (step_end_time - step_start_time) * 1000
-        step_start_time = step_end_time
-        
-        # Log metrics
-        gpu_memory_used = get_gpu_memory_usage()
-        metrics = {
-            f"{log_prefix}/loss": loss.detach().float().item(),
-            f"{log_prefix}/step_time_ms": step_time_ms,
-            f"{log_prefix}/gpu_memory_gb": gpu_memory_used,
-        }
-        accelerator.log(metrics, step=step_idx)
+            # Log metrics
+            gpu_memory_used = get_gpu_memory_usage()
+            metrics = {
+                f"{log_prefix}/loss": loss.detach().float().item(),
+                f"{log_prefix}/step_time_ms": step_time_ms,
+                f"{log_prefix}/gpu_memory_gb": gpu_memory_used,
+            }
+            accelerator.log(metrics, step=step_idx)
         
     torch.cuda.synchronize()
     end.record()

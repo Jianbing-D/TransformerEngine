@@ -269,102 +269,33 @@ class TELlamaForCausalLMWithFusedCrossEntropy(LlamaForCausalLM):
         loss = None
         logits = None
         if labels is not None:
-            lm_head_weight = self.lm_head.weight
+            with torch.cuda.nvtx.range("fused_loss"):
+                lm_head_weight = self.lm_head.weight
 
-            assert hidden_states.is_contiguous()
-            assert labels.is_contiguous()
-            assert lm_head_weight.is_contiguous()
+                ignore_index = -100
+                _labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
+                shift_labels = _labels[..., 1:].contiguous()
 
-            ignore_index = -100
-            _labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
-            shift_labels = _labels[..., 1:].contiguous()
+                batch_size, seq_length, hidden_size = hidden_states.size()
 
-            batch_size, seq_length, hidden_size = hidden_states.size()
+                hidden_states_view = hidden_states.view(-1, hidden_size)
+                labels_view = shift_labels.view(-1)
+                lm_head_weight_view = lm_head_weight.T.contiguous()
 
-            hidden_states_view = hidden_states.view(-1, hidden_size)
-            labels_view = shift_labels.view(-1)
-            lm_head_weight_view = lm_head_weight.T.contiguous()
+                loss = linear_cross_entropy(
+                    hidden_states_view,
+                    lm_head_weight_view,
+                    labels_view,
+                    "mean",
+                    None,
+                    ignore_index)
 
-            assert hidden_states_view.is_contiguous()
-            assert labels_view.is_contiguous()
-            assert lm_head_weight_view.is_contiguous()
-
-            loss = linear_cross_entropy(
-                hidden_states_view,
-                lm_head_weight_view,
-                labels_view,
-                "mean")
-            print(f"linear_cross_entropy: {loss}, {loss.dtype}")
-
-            original_logits = self.lm_head(hidden_states)
-            # Print the loss_function code for debugging
-            # import inspect
-            # print(f"Loss function: {self.loss_function.__code__}")
-            # print(f"Loss function source: {inspect.getsource(self.loss_function)}")
+            # vanilla implementation
+            # with torch.cuda.nvtx.range("vanilla_loss"):
+            #     _logits = self.lm_head(hidden_states)
+            #     _loss = self.loss_function(logits=_logits, labels=labels, vocab_size=self.config.vocab_size, **kwargs)
+            #     loss = _loss
             
-            original_loss = self.loss_function(logits=original_logits, 
-                                               labels=labels,
-                                               vocab_size=self.config.vocab_size,
-                                               **kwargs)
-
-            loss = original_loss
-            logits = original_logits
-
-            def fixed_cross_entropy(source, target, 
-                                    num_items_in_batch = None, ignore_index = -100, 
-                                    **kwargs):
-                reduction = "sum" if num_items_in_batch is not None else "mean"
-                loss = torch.nn.functional.cross_entropy(source, target,
-                                                         ignore_index=ignore_index,
-                                                         reduction=reduction)
-                if reduction == "sum":
-                    loss = loss / num_items_in_batch
-                return loss
-
-            def manual_for_causal_lm_loss(
-                logits, labels, vocab_size, 
-                num_items_in_batch = None, ignore_index = -100, **kwargs):
-                logits = logits.float()
-                labels = labels.to(logits.device)
-
-                # This line pads the labels tensor with one additional element (value=ignore_index) at the end
-                # It's needed for the causal language modeling loss calculation where we shift labels
-                # to align predictions with targets (each token predicts the next token)
-                labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
-                # This line shifts the labels to the right by one position
-                # It takes all elements from the second position (index 1) to the end
-                # This is done because in causal language modeling, each token predicts the next token
-                # So we need to align the labels with the predictions by shifting them
-                shift_labels = labels[..., 1:].contiguous()
-
-                logits = logits.view(-1, vocab_size)
-                shift_labels = shift_labels.view(-1)
-                shift_labels = shift_labels.to(logits.device)
-                loss = fixed_cross_entropy(logits, shift_labels,
-                                           num_items_in_batch, ignore_index,
-                                           **kwargs)
-                return loss
-
-            manual_loss = manual_for_causal_lm_loss(
-                logits=original_logits,
-                labels=labels,
-                vocab_size=self.config.vocab_size,
-                **kwargs)
-            print(f"manual_loss: {manual_loss}, {manual_loss.dtype}")
-
-            _labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
-            shift_labels = _labels[..., 1:].contiguous()
-            torch_loss = torch.nn.functional.cross_entropy(
-                        original_logits.float().view(-1, original_logits.shape[-1]), 
-                        shift_labels.view(-1))
-            print(f"torch_loss: {torch_loss}, {torch_loss.dtype}")
-            print(f"original_loss: {original_loss}, {original_loss.dtype}")
-            print(f"vocab_size: {self.config.vocab_size}")
-
-            print(f"hidden_states: {hidden_states.shape}, {hidden_states.dtype}")
-            print(f"labels: {labels.shape}, {labels.dtype}")
-            print(f"original_logits: {original_logits.shape}, {original_logits.dtype}")
-            exit()
         else:
             logits = self.lm_head(hidden_states)
 
