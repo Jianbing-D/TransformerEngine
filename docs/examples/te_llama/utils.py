@@ -160,6 +160,27 @@ def init_te_llama_model(hyperparams):
     return model
 
 
+def init_te_llama_with_fused_loss_model(hyperparams):
+    # Download and cache the weights
+    ensure_model_is_downloaded(hyperparams)
+
+    # Init the model
+    from te_llama import TELlamaForCausalLMWithFusedCrossEntropyFactory
+
+    config = AutoConfig.from_pretrained(hyperparams.weights_cache_dir)
+    config._attn_implementation = "flash_attention_2"
+    model = TELlamaForCausalLMWithFusedCrossEntropyFactory.from_pretrained_local(
+        hyperparams.weights_cache_dir,
+        config=config,
+        torch_dtype=torch.bfloat16,
+    )
+    model = model.cuda()
+    # Needed for the cases when using TELlamaForCausalLM
+    model.config.use_cache = False
+
+    return model
+
+
 def wrap_with_accelerator(model, hyperparams):
     # Create FP8 kwarg handler if required
     fp8_kwarg_handler = (

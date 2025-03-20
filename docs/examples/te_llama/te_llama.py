@@ -13,6 +13,7 @@ from torch import nn
 import transformer_engine as te
 from transformer_engine.pytorch.dot_product_attention.rope import RotaryPositionEmbedding
 from transformer_engine.pytorch.fp8 import fp8_model_init
+from transformer_engine.pytorch.linear_cross_entropy import linear_cross_entropy
 
 import transformers
 from transformers.models.llama.modeling_llama import (
@@ -21,6 +22,8 @@ from transformers.models.llama.modeling_llama import (
     LlamaRMSNorm,
     LlamaConfig,
 )
+from transformers.modeling_outputs import CausalLMOutputWithPast
+
 from transformers.modeling_utils import _add_variant, load_state_dict, _load_state_dict_into_model
 from transformers.utils import WEIGHTS_INDEX_NAME
 from transformers.utils.hub import get_checkpoint_shard_files
@@ -219,3 +222,162 @@ def replace_params(hf_state_dict, te_state_dict, config):
                 layer_prefix + "mlp.down_proj.weight"
             ].data[:]
     return all_layer_prefixes
+
+
+class TELlamaForCausalLMWithFusedCrossEntropy(LlamaForCausalLM):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, 
+                input_ids = None,
+                attention_mask = None,
+                position_ids = None,
+                past_key_values = None,
+                inputs_embeds = None,
+                labels = None,
+                use_cache = None,
+                output_attentions = None,
+                output_hidden_states = None,
+                return_dict = None,
+                cache_position = None,
+                logits_to_keep = 0,
+                **kwargs):
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        model_outputs = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+            cache_position=cache_position,
+            **kwargs,
+        )
+
+        hidden_states = model_outputs[0]
+        slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
+        hidden_states = hidden_states[:, slice_indices, :]
+
+        loss = None
+        logits = None
+        if labels is not None:
+            lm_head_weight = self.lm_head.weight
+
+            assert hidden_states.is_contiguous()
+            assert labels.is_contiguous()
+            assert lm_head_weight.is_contiguous()
+
+            ignore_index = -100
+            _labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
+            shift_labels = _labels[..., 1:].contiguous()
+
+            batch_size, seq_length, hidden_size = hidden_states.size()
+
+            hidden_states_view = hidden_states.view(-1, hidden_size)
+            labels_view = shift_labels.view(-1)
+            lm_head_weight_view = lm_head_weight.T.contiguous()
+
+            assert hidden_states_view.is_contiguous()
+            assert labels_view.is_contiguous()
+            assert lm_head_weight_view.is_contiguous()
+
+            loss = linear_cross_entropy(
+                hidden_states_view,
+                lm_head_weight_view,
+                labels_view,
+                "mean")
+            print(f"linear_cross_entropy: {loss}, {loss.dtype}")
+
+            original_logits = self.lm_head(hidden_states)
+            # Print the loss_function code for debugging
+            # import inspect
+            # print(f"Loss function: {self.loss_function.__code__}")
+            # print(f"Loss function source: {inspect.getsource(self.loss_function)}")
+            
+            original_loss = self.loss_function(logits=original_logits, 
+                                               labels=labels,
+                                               vocab_size=self.config.vocab_size,
+                                               **kwargs)
+
+            loss = original_loss
+            logits = original_logits
+
+            def fixed_cross_entropy(source, target, 
+                                    num_items_in_batch = None, ignore_index = -100, 
+                                    **kwargs):
+                reduction = "sum" if num_items_in_batch is not None else "mean"
+                loss = torch.nn.functional.cross_entropy(source, target,
+                                                         ignore_index=ignore_index,
+                                                         reduction=reduction)
+                if reduction == "sum":
+                    loss = loss / num_items_in_batch
+                return loss
+
+            def manual_for_causal_lm_loss(
+                logits, labels, vocab_size, 
+                num_items_in_batch = None, ignore_index = -100, **kwargs):
+                logits = logits.float()
+                labels = labels.to(logits.device)
+
+                # This line pads the labels tensor with one additional element (value=ignore_index) at the end
+                # It's needed for the causal language modeling loss calculation where we shift labels
+                # to align predictions with targets (each token predicts the next token)
+                labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
+                # This line shifts the labels to the right by one position
+                # It takes all elements from the second position (index 1) to the end
+                # This is done because in causal language modeling, each token predicts the next token
+                # So we need to align the labels with the predictions by shifting them
+                shift_labels = labels[..., 1:].contiguous()
+
+                logits = logits.view(-1, vocab_size)
+                shift_labels = shift_labels.view(-1)
+                shift_labels = shift_labels.to(logits.device)
+                loss = fixed_cross_entropy(logits, shift_labels,
+                                           num_items_in_batch, ignore_index,
+                                           **kwargs)
+                return loss
+
+            manual_loss = manual_for_causal_lm_loss(
+                logits=original_logits,
+                labels=labels,
+                vocab_size=self.config.vocab_size,
+                **kwargs)
+            print(f"manual_loss: {manual_loss}, {manual_loss.dtype}")
+
+            _labels = torch.nn.functional.pad(labels, (0, 1), value=ignore_index)
+            shift_labels = _labels[..., 1:].contiguous()
+            torch_loss = torch.nn.functional.cross_entropy(
+                        original_logits.float().view(-1, original_logits.shape[-1]), 
+                        shift_labels.view(-1))
+            print(f"torch_loss: {torch_loss}, {torch_loss.dtype}")
+            print(f"original_loss: {original_loss}, {original_loss.dtype}")
+            print(f"vocab_size: {self.config.vocab_size}")
+
+            print(f"hidden_states: {hidden_states.shape}, {hidden_states.dtype}")
+            print(f"labels: {labels.shape}, {labels.dtype}")
+            print(f"original_logits: {original_logits.shape}, {original_logits.dtype}")
+            exit()
+        else:
+            logits = self.lm_head(hidden_states)
+
+        return CausalLMOutputWithPast(
+            loss=loss,
+            logits=logits,
+            past_key_values=model_outputs.past_key_values,
+            hidden_states=model_outputs.hidden_states,
+            attentions=model_outputs.attentions,
+        )
+
+class TELlamaForCausalLMWithFusedCrossEntropyFactory(TELlamaForCausalLM):
+    def __new__(cls, config: LlamaConfig):
+        with replace_decoder(te_decoder_cls=TELlamaDecoderLayer):
+            llama_for_causal_lm = TELlamaForCausalLMWithFusedCrossEntropy(config)
+        return llama_for_causal_lm
