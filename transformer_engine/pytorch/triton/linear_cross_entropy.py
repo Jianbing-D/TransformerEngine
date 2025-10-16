@@ -16,6 +16,7 @@ from transformer_engine.pytorch.triton.linear_cross_entropy_with_token_entropy i
 
 _dedicated_stream, _dedicated_events = None, None
 
+import transformer_engine_torch as tex
 
 @triton.autotune(
     configs=[
@@ -459,34 +460,46 @@ def efficient_entropy_forward(
         num_tokens, ignore_index, labels, labels.stride(0), num_valid_tokens
     )
 
-    def mainloop_grid(meta):
-        return (triton.cdiv(num_tokens, meta["BLOCK_SIZE_M"]) * num_splits,)
+    USE_TRITON = False
+    
+    if USE_TRITON:
+        def mainloop_grid(meta):
+            return (triton.cdiv(num_tokens, meta["BLOCK_SIZE_M"]) * num_splits,)
 
-    efficient_entropy_kernel_general_mainloop[mainloop_grid](
-        num_tokens,
-        hidden_size,
-        vocab_size,
-        vocab_per_split,
-        ignore_index,
-        _rank,
-        hidden,
-        hidden.stride(0),
-        hidden.stride(1),
-        weight,
-        weight.stride(0),
-        weight.stride(1),
-        labels,
-        labels.stride(0),
-        _max,
-        _max.stride(0),
-        _max.stride(1),
-        _accu,
-        _accu.stride(0),
-        _accu.stride(1),
-        _logprobs,
-        _logprobs.stride(0),
-        logprobs,
-    )
+        efficient_entropy_kernel_general_mainloop[mainloop_grid](
+            num_tokens,
+            hidden_size,
+            vocab_size,
+            vocab_per_split,
+            ignore_index,
+            _rank,
+            hidden,
+            hidden.stride(0),
+            hidden.stride(1),
+            weight,
+            weight.stride(0),
+            weight.stride(1),
+            labels,
+            labels.stride(0),
+            _max,
+            _max.stride(0),
+            _max.stride(1),
+            _accu,
+            _accu.stride(0),
+            _accu.stride(1),
+            _logprobs,
+            _logprobs.stride(0),
+            logprobs,
+        )
+    else:
+        # use cpp extension
+        tex.fused_linear_cross_entropy_fwd_mainloop(
+            hidden,
+            weight,
+            labels,
+            ignore_index
+        )
+        exit()
 
     def epilogue_grid(meta):
         return (triton.cdiv(num_tokens, meta["BLOCK_SIZE_M"]),)

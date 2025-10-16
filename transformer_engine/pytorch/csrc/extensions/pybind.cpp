@@ -494,4 +494,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
       .def("get_buffer", &CommOverlapP2P::get_buffer, py::arg("local_chunk") = false,
            py::arg("shape") = std::nullopt)
       .def("get_communication_stream", &CommOverlapP2P::get_communication_stream);
+
+  // fused linear + cross-entropy
+  // TODO: declare its arguments here
+  m.def("fused_linear_cross_entropy_fwd_mainloop",
+        &transformer_engine::pytorch::fused_linear_cross_entropy_fwd_mainloop,
+        "Forward mainloop kernel for fused linear + cross-entropy",
+        py::call_guard<py::gil_scoped_release>());
 }

@@ -473,6 +473,14 @@ void nvshmem_finalize();
 void bulk_overlap_ag_with_external_gemm(CommOverlap &allgather_communicator, at::Stream send_stream,
                                         at::Stream recv_stream);
 
+
+/***************************************************************************************************
+ * Fused Linear + Cross-Entropy
+ **************************************************************************************************/
+
+void fused_linear_cross_entropy_fwd_mainloop(at::Tensor hidden, at::Tensor weight, at::Tensor labels,
+                                             int32_t ignore_index = -100);
+
 }  // namespace transformer_engine::pytorch
 
 /***************************************************************************************************

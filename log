@@ -1,0 +1,688 @@
+Using pip 25.2 from /usr/local/lib/python3.12/dist-packages/pip (python 3.12)
+Obtaining file:///home/scratch.jianbingd_sw/LLM/TransformerEngine
+  Checking if build backend supports build_editable: started
+  Running command Checking if build backend supports build_editable
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Running command Preparing editable metadata (pyproject.toml)
+  running dist_info
+  creating /tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info
+  writing /tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/PKG-INFO
+  writing dependency_links to /tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/dependency_links.txt
+  writing requirements to /tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/requires.txt
+  writing top-level names to /tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/top_level.txt
+  writing manifest file '/tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/SOURCES.txt'
+  adding license file 'LICENSE'
+  writing manifest file '/tmp/pip-modern-metadata-s6wpivjx/transformer_engine.egg-info/SOURCES.txt'
+  creating '/tmp/pip-modern-metadata-s6wpivjx/transformer_engine-2.9.0.dev0+63675389.dist-info'
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: importlib-metadata>=1.0 in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (8.7.0)
+Requirement already satisfied: torch>=2.1 in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (2.8.0a0+34c6371d24.nv25.8)
+Requirement already satisfied: onnxscript in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (0.5.3)
+Requirement already satisfied: onnx in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (1.18.0)
+Requirement already satisfied: packaging in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (23.2)
+Requirement already satisfied: pydantic in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (2.11.7)
+Requirement already satisfied: einops in /usr/local/lib/python3.12/dist-packages (from transformer_engine==2.9.0.dev0+63675389) (0.8.1)
+Requirement already satisfied: zipp>=3.20 in /usr/local/lib/python3.12/dist-packages (from importlib-metadata>=1.0->transformer_engine==2.9.0.dev0+63675389) (3.23.0)
+Requirement already satisfied: filelock in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (3.18.0)
+Requirement already satisfied: typing-extensions>=4.10.0 in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (4.14.1)
+Requirement already satisfied: sympy>=1.13.3 in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (1.14.0)
+Requirement already satisfied: networkx in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (3.5)
+Requirement already satisfied: jinja2 in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (3.1.6)
+Requirement already satisfied: fsspec in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (2025.7.0)
+Requirement already satisfied: setuptools in /usr/local/lib/python3.12/dist-packages (from torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (79.0.1)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /usr/local/lib/python3.12/dist-packages (from sympy>=1.13.3->torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (1.3.0)
+Requirement already satisfied: MarkupSafe>=2.0 in /usr/local/lib/python3.12/dist-packages (from jinja2->torch>=2.1->transformer_engine==2.9.0.dev0+63675389) (3.0.2)
+Requirement already satisfied: numpy>=1.22 in /usr/local/lib/python3.12/dist-packages (from onnx->transformer_engine==2.9.0.dev0+63675389) (1.26.4)
+Requirement already satisfied: protobuf>=4.25.1 in /usr/local/lib/python3.12/dist-packages (from onnx->transformer_engine==2.9.0.dev0+63675389) (6.31.1)
+Requirement already satisfied: ml_dtypes in /usr/local/lib/python3.12/dist-packages (from onnxscript->transformer_engine==2.9.0.dev0+63675389) (0.5.3)
+Requirement already satisfied: onnx_ir<2,>=0.1.10 in /usr/local/lib/python3.12/dist-packages (from onnxscript->transformer_engine==2.9.0.dev0+63675389) (0.1.10)
+Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.12/dist-packages (from pydantic->transformer_engine==2.9.0.dev0+63675389) (0.7.0)
+Requirement already satisfied: pydantic-core==2.33.2 in /usr/local/lib/python3.12/dist-packages (from pydantic->transformer_engine==2.9.0.dev0+63675389) (2.33.2)
+Requirement already satisfied: typing-inspection>=0.4.0 in /usr/local/lib/python3.12/dist-packages (from pydantic->transformer_engine==2.9.0.dev0+63675389) (0.4.1)
+Building wheels for collected packages: transformer_engine
+  Building editable for transformer_engine (pyproject.toml): started
+  Running command Building editable for transformer_engine (pyproject.toml)
+  running editable_wheel
+  creating /tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info
+  writing /tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/PKG-INFO
+  writing dependency_links to /tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/dependency_links.txt
+  writing requirements to /tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/requires.txt
+  writing top-level names to /tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/top_level.txt
+  writing manifest file '/tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/SOURCES.txt'
+  adding license file 'LICENSE'
+  writing manifest file '/tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine.egg-info/SOURCES.txt'
+  creating '/tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine-2.9.0.dev0+63675389.dist-info'
+  creating /tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine-2.9.0.dev0+63675389.dist-info/WHEEL
+  running build_py
+  running build_ext
+  -- cudnn found at /usr/lib/aarch64-linux-gnu/libcudnn.so.
+  -- cuDNN: /usr/lib/aarch64-linux-gnu/libcudnn.so
+  -- cuDNN: /usr/include/aarch64-linux-gnu
+  -- cudnn_graph found at /usr/lib/aarch64-linux-gnu/libcudnn_graph.so.
+  -- cudnn_engines_runtime_compiled found at /usr/lib/aarch64-linux-gnu/libcudnn_engines_runtime_compiled.so.
+  -- cudnn_ops found at /usr/lib/aarch64-linux-gnu/libcudnn_ops.so.
+  -- cudnn_cnn found at /usr/lib/aarch64-linux-gnu/libcudnn_cnn.so.
+  -- cudnn_adv found at /usr/lib/aarch64-linux-gnu/libcudnn_adv.so.
+  -- cudnn_engines_precompiled found at /usr/lib/aarch64-linux-gnu/libcudnn_engines_precompiled.so.
+  -- cudnn_heuristic found at /usr/lib/aarch64-linux-gnu/libcudnn_heuristic.so.
+  -- Parallel build jobs: max
+  -- Threads per parallel build job: 8
+  -- Configuring done (0.5s)
+  -- Generating done (0.1s)
+  -- Build files have been written to: /home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake
+  Change Dir: '/home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake'
+
+  Run Build Command(s): /usr/local/bin/ninja -v
+  [1/5] /usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DNV_CUDNN_FRONTEND_USE_DYNAMIC_LOADING -Dtransformer_engine_EXPORTS -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/.. -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/usr/local/lib/python3.12/dist-packages/nvidia/mathdx/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cudnn-frontend/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/tools/util/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake/string_headers -isystem /usr/local/cuda/targets/sbsa-linux/include -Wl,--version-script=/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/libtransformer_engine.version --expt-relaxed-constexpr -O3 --threads 8 -O3 -DNDEBUG -std=c++17 "--generate-code=arch=compute_100a,code=[compute_100a,sm_100a]" -Xcompiler=-fPIC -MD -MT CMakeFiles/transformer_engine.dir/linear_entropy/hopper.cu.o -MF CMakeFiles/transformer_engine.dir/linear_entropy/hopper.cu.o.d -x cu -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/linear_entropy/hopper.cu -o CMakeFiles/transformer_engine.dir/linear_entropy/hopper.cu.o
+  [2/5] /usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DNV_CUDNN_FRONTEND_USE_DYNAMIC_LOADING -Dtransformer_engine_EXPORTS -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/.. -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/usr/local/lib/python3.12/dist-packages/nvidia/mathdx/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cudnn-frontend/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/tools/util/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake/string_headers -isystem /usr/local/cuda/targets/sbsa-linux/include -Wl,--version-script=/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/libtransformer_engine.version --expt-relaxed-constexpr -O3 --threads 8 -O3 -DNDEBUG -std=c++17 "--generate-code=arch=compute_100a,code=[compute_100a,sm_100a]" -Xcompiler=-fPIC -MD -MT CMakeFiles/transformer_engine.dir/linear_entropy/ampere.cu.o -MF CMakeFiles/transformer_engine.dir/linear_entropy/ampere.cu.o.d -x cu -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/linear_entropy/ampere.cu -o CMakeFiles/transformer_engine.dir/linear_entropy/ampere.cu.o
+  [3/5] /usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DNV_CUDNN_FRONTEND_USE_DYNAMIC_LOADING -Dtransformer_engine_EXPORTS -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/.. -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/usr/local/lib/python3.12/dist-packages/nvidia/mathdx/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cudnn-frontend/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/tools/util/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake/string_headers -isystem /usr/local/cuda/targets/sbsa-linux/include -Wl,--version-script=/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/libtransformer_engine.version --expt-relaxed-constexpr -O3 --threads 8 -O3 -DNDEBUG -std=c++17 "--generate-code=arch=compute_100a,code=[compute_100a,sm_100a]" -Xcompiler=-fPIC -MD -MT CMakeFiles/transformer_engine.dir/linear_entropy/blackwell.cu.o -MF CMakeFiles/transformer_engine.dir/linear_entropy/blackwell.cu.o.d -x cu -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/linear_entropy/blackwell.cu -o CMakeFiles/transformer_engine.dir/linear_entropy/blackwell.cu.o
+  [4/5] /usr/local/cuda/bin/nvcc -forward-unknown-to-host-compiler -DNV_CUDNN_FRONTEND_USE_DYNAMIC_LOADING -Dtransformer_engine_EXPORTS -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/.. -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/usr/local/lib/python3.12/dist-packages/nvidia/mathdx/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cudnn-frontend/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/../../3rdparty/cutlass/tools/util/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake/string_headers -isystem /usr/local/cuda/targets/sbsa-linux/include -Wl,--version-script=/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/libtransformer_engine.version --expt-relaxed-constexpr -O3 --threads 8 -O3 -DNDEBUG -std=c++17 "--generate-code=arch=compute_100a,code=[compute_100a,sm_100a]" -Xcompiler=-fPIC -MD -MT CMakeFiles/transformer_engine.dir/linear_entropy/linear_entropy.cu.o -MF CMakeFiles/transformer_engine.dir/linear_entropy/linear_entropy.cu.o.d -x cu -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/linear_entropy/linear_entropy.cu -o CMakeFiles/transformer_engine.dir/linear_entropy/linear_entropy.cu.o
+  [5/5] : && /usr/bin/c++ -fPIC -Wl,--version-script=/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/libtransformer_engine.version -O3 -DNDEBUG  -Wl,--dependency-file=CMakeFiles/transformer_engine.dir/link.d -shared -Wl,-soname,libtransformer_engine.so -o libtransformer_engine.so CMakeFiles/transformer_engine.dir/cudnn_utils.cpp.o CMakeFiles/transformer_engine.dir/transformer_engine.cpp.o CMakeFiles/transformer_engine.dir/common.cu.o CMakeFiles/transformer_engine.dir/multi_tensor/adam.cu.o CMakeFiles/transformer_engine.dir/multi_tensor/compute_scale.cu.o CMakeFiles/transformer_engine.dir/multi_tensor/l2norm.cu.o CMakeFiles/transformer_engine.dir/multi_tensor/scale.cu.o CMakeFiles/transformer_engine.dir/multi_tensor/sgd.cu.o CMakeFiles/transformer_engine.dir/transpose/cast_transpose.cu.o CMakeFiles/transformer_engine.dir/transpose/transpose.cu.o CMakeFiles/transformer_engine.dir/transpose/cast_transpose_fusion.cu.o CMakeFiles/transformer_engine.dir/transpose/transpose_fusion.cu.o CMakeFiles/transformer_engine.dir/transpose/multi_cast_transpose.cu.o CMakeFiles/transformer_engine.dir/transpose/quantize_transpose_square_blockwise.cu.o CMakeFiles/transformer_engine.dir/transpose/quantize_transpose_vector_blockwise.cu.o CMakeFiles/transformer_engine.dir/transpose/swap_first_dims.cu.o CMakeFiles/transformer_engine.dir/transpose/quantize_transpose_vector_blockwise_fp4.cu.o CMakeFiles/transformer_engine.dir/activation/gelu.cu.o CMakeFiles/transformer_engine.dir/dropout/dropout.cu.o CMakeFiles/transformer_engine.dir/fused_attn/flash_attn.cu.o CMakeFiles/transformer_engine.dir/fused_attn/context_parallel.cu.o CMakeFiles/transformer_engine.dir/fused_attn/kv_cache.cu.o CMakeFiles/transformer_engine.dir/fused_attn/fused_attn_f16_max512_seqlen.cu.o CMakeFiles/transformer_engine.dir/fused_attn/fused_attn_f16_arbitrary_seqlen.cu.o CMakeFiles/transformer_engine.dir/activation/relu.cu.o CMakeFiles/transformer_engine.dir/activation/swiglu.cu.o CMakeFiles/transformer_engine.dir/fused_attn/fused_attn_fp8.cu.o CMakeFiles/transformer_engine.dir/fused_attn/fused_attn.cpp.o CMakeFiles/transformer_engine.dir/fused_attn/utils.cu.o CMakeFiles/transformer_engine.dir/gemm/config.cpp.o CMakeFiles/transformer_engine.dir/gemm/cublaslt_gemm.cu.o CMakeFiles/transformer_engine.dir/gemm/cutlass_grouped_gemm.cu.o CMakeFiles/transformer_engine.dir/normalization/common.cpp.o CMakeFiles/transformer_engine.dir/normalization/layernorm/ln_api.cpp.o CMakeFiles/transformer_engine.dir/normalization/layernorm/ln_bwd_semi_cuda_kernel.cu.o CMakeFiles/transformer_engine.dir/normalization/layernorm/ln_fwd_cuda_kernel.cu.o CMakeFiles/transformer_engine.dir/normalization/rmsnorm/rmsnorm_api.cpp.o CMakeFiles/transformer_engine.dir/normalization/rmsnorm/rmsnorm_bwd_semi_cuda_kernel.cu.o CMakeFiles/transformer_engine.dir/normalization/rmsnorm/rmsnorm_fwd_cuda_kernel.cu.o CMakeFiles/transformer_engine.dir/permutation/permutation.cu.o CMakeFiles/transformer_engine.dir/util/cast.cu.o CMakeFiles/transformer_engine.dir/util/padding.cu.o CMakeFiles/transformer_engine.dir/util/cuda_driver.cpp.o CMakeFiles/transformer_engine.dir/util/cuda_nvml.cpp.o CMakeFiles/transformer_engine.dir/util/cuda_runtime.cpp.o CMakeFiles/transformer_engine.dir/util/multi_stream.cpp.o CMakeFiles/transformer_engine.dir/util/rtc.cpp.o CMakeFiles/transformer_engine.dir/swizzle/swizzle.cu.o CMakeFiles/transformer_engine.dir/fused_softmax/scaled_masked_softmax.cu.o CMakeFiles/transformer_engine.dir/fused_softmax/scaled_upper_triang_masked_softmax.cu.o CMakeFiles/transformer_engine.dir/fused_softmax/scaled_aligned_causal_masked_softmax.cu.o CMakeFiles/transformer_engine.dir/fused_rope/fused_rope.cu.o CMakeFiles/transformer_engine.dir/fused_router/fused_moe_aux_loss.cu.o CMakeFiles/transformer_engine.dir/fused_router/fused_score_for_moe_aux_loss.cu.o CMakeFiles/transformer_engine.dir/fused_router/fused_topk_with_score_function.cu.o CMakeFiles/transformer_engine.dir/recipe/current_scaling.cu.o CMakeFiles/transformer_engine.dir/recipe/delayed_scaling.cu.o CMakeFiles/transformer_engine.dir/recipe/fp8_block_scaling.cu.o CMakeFiles/transformer_engine.dir/recipe/nvfp4.cu.o CMakeFiles/transformer_engine.dir/hadamard_transform/hadamard_transform.cu.o CMakeFiles/transformer_engine.dir/hadamard_transform/hadamard_transform_cast_fusion.cu.o CMakeFiles/transformer_engine.dir/comm_gemm_overlap/userbuffers/ipcsocket.cc.o CMakeFiles/transformer_engine.dir/comm_gemm_overlap/userbuffers/userbuffers-host.cpp.o CMakeFiles/transformer_engine.dir/comm_gemm_overlap/userbuffers/userbuffers.cu.o CMakeFiles/transformer_engine.dir/comm_gemm_overlap/comm_gemm_overlap.cpp.o CMakeFiles/transformer_engine.dir/linear_entropy/linear_entropy.cu.o CMakeFiles/transformer_engine.dir/linear_entropy/ampere.cu.o CMakeFiles/transformer_engine.dir/linear_entropy/hopper.cu.o CMakeFiles/transformer_engine.dir/linear_entropy/blackwell.cu.o -L/usr/local/cuda/targets/sbsa-linux/lib -Wl,-rpath,/usr/local/cuda-13.0/targets/sbsa-linux/lib:  /usr/local/cuda-13.0/targets/sbsa-linux/lib/libcublas.so  /usr/local/cuda-13.0/targets/sbsa-linux/lib/libcudart.so  /usr/local/cuda-13.0/targets/sbsa-linux/lib/libcublasLt.so  /usr/local/cuda-13.0/targets/sbsa-linux/lib/libculibos.a  -ldl  /usr/lib/aarch64-linux-gnu/librt.a  /usr/lib/aarch64-linux-gnu/libcudnn.so  /usr/lib/aarch64-linux-gnu/libcudnn_graph.so  /usr/lib/aarch64-linux-gnu/libcudnn_engines_runtime_compiled.so  /usr/lib/aarch64-linux-gnu/libcudnn_ops.so  /usr/lib/aarch64-linux-gnu/libcudnn_cnn.so  /usr/lib/aarch64-linux-gnu/libcudnn_adv.so  /usr/lib/aarch64-linux-gnu/libcudnn_engines_precompiled.so  /usr/lib/aarch64-linux-gnu/libcudnn_heuristic.so  -lcudadevrt  -lcudart_static  -lrt  -lpthread  -ldl && :
+
+  -- Install configuration: "Release"
+  -- Installing: /home/scratch.jianbingd_sw/LLM/TransformerEngine/./libtransformer_engine.so
+  -- Set non-toolchain portion of runtime path of "/home/scratch.jianbingd_sw/LLM/TransformerEngine/./libtransformer_engine.so" to ""
+  Building CMake extension transformer_engine
+  Running command /usr/local/lib/python3.12/dist-packages/cmake/data/bin/cmake -S /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -B /home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake -DPython_EXECUTABLE=/usr/bin/python -DPython_INCLUDE_DIR=/usr/include/python3.12 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/scratch.jianbingd_sw/LLM/TransformerEngine -DCMAKE_CUDA_ARCHITECTURES=100a -Dpybind11_DIR=/usr/local/lib/python3.12/dist-packages/pybind11/share/cmake/pybind11 -GNinja
+  Running command /usr/local/lib/python3.12/dist-packages/cmake/data/bin/cmake --build /home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake --verbose --parallel
+  Running command /usr/local/lib/python3.12/dist-packages/cmake/data/bin/cmake --install /home/scratch.jianbingd_sw/LLM/TransformerEngine/build/cmake --verbose
+  Time for build_ext: 9.42 seconds
+  building 'transformer_engine_torch' extension
+  creating /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc
+  creating /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions
+  creating /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor
+  [1/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/sgd.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/sgd.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/sgd.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/sgd.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [2/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/recipe.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/recipe.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/recipe.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/recipe.cpp:12:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [3/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/misc.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/misc.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/misc.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/misc.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [4/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/linear_entropy.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/linear_entropy.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/linear_entropy.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/linear_entropy.cpp:1:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [5/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/nvshmem_comm.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/nvshmem_comm.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/nvshmem_comm.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/nvshmem_comm.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [6/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/adam.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/adam.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/adam.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/adam.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [7/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/transpose.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/transpose.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/transpose.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/pybind.h:18,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/transpose.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/transpose.cpp:12:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [8/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/scale.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/scale.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/scale.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/scale.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [9/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/l2norm.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/l2norm.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/l2norm.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/l2norm.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [10/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/type_converters.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/type_converters.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/type_converters.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  [11/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/permutation.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/permutation.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/permutation.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/permutation.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [12/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/fp8_block_scaling_partial_cast.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/fp8_block_scaling_partial_cast.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/fp8_block_scaling_partial_cast.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/fp8_block_scaling_partial_cast.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [13/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/padding.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/padding.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/padding.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/padding.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [14/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/compute_scale.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/compute_scale.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/compute_scale.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/compute_scale.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/multi_tensor/../../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [15/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/dropout.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/dropout.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/dropout.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/pybind.h:18,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/dropout.cpp:10:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/dropout.cpp:15:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [16/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/softmax.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/softmax.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/softmax.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/softmax.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [17/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/normalization.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/normalization.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/normalization.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/normalization.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [18/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/util.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/util.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/util.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  [19/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/bias.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/bias.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/bias.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/bias.cpp:14:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [20/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/activation.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/activation.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/activation.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/activation.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [21/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/common.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/common.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/common.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  [22/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/router.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/router.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/router.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/router.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [23/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/apply_rope.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/apply_rope.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/apply_rope.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/apply_rope.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [24/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/comm_gemm_overlap.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/comm_gemm_overlap.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/comm_gemm_overlap.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/comm_gemm_overlap.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [25/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/gemm.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/gemm.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/gemm.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/gemm.cpp:12:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/gemm.cpp:13:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [26/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/cast.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/cast.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/cast.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/cast.cpp:16:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  [27/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/attention.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/attention.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:12,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp: In function ‘at::Tensor transformer_engine::pytorch::thd_read_half_tensor(const at::Tensor&, const at::Tensor&, int)’:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp:608:7: warning: unused variable ‘batch’ [-Wunused-variable]
+    608 |   int batch = cu_seqlens.size(0) - 1;
+        |       ^~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp: In function ‘at::Tensor transformer_engine::pytorch::thd_get_partitioned_indices(const at::Tensor&, int, int, int)’:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp:772:7: warning: unused variable ‘batch’ [-Wunused-variable]
+    772 |   int batch = cu_seqlens.size(0) - 1;
+        |       ^~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp: In function ‘at::Tensor transformer_engine::pytorch::convert_bshd_to_thd(at::Tensor, at::Tensor, int)’:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/attention.cpp:811:7: warning: unused variable ‘max_seq_len’ [-Wunused-variable]
+    811 |   int max_seq_len = tensor.size(1);
+        |       ^~~~~~~~~~~
+  [28/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/quantizer.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/quantizer.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/quantizer.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  [29/29] c++ -MMD -MF /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/pybind.o.d -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -fPIC -I/usr/local/cuda/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include -I/home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc -I/usr/local/lib/python3.12/dist-packages/torch/include -I/usr/local/lib/python3.12/dist-packages/torch/include/torch/csrc/api/include -I/usr/include/python3.12 -c -c /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/pybind.cpp -o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/pybind.o -O3 -fvisibility=hidden -g0 -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1016"' -DTORCH_EXTENSION_NAME=transformer_engine_torch -std=c++17
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/common.h:29,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/pybind.h:18,
+                   from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/pybind.cpp:7:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:93:16: warning: ‘virtual void transformer_engine::CommOverlapCore::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+     93 |   virtual void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |                ^~~~~~~~~~~~~~~~
+  In file included from /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/pybind.cpp:20:
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:528:8: note:   by ‘void CommOverlap::copy_into_buffer(const at::Tensor&, bool)’
+    528 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/common/include/transformer_engine/comm_gemm_overlap.h:262:8: warning: ‘virtual void transformer_engine::CommOverlapP2PBase::copy_into_buffer(cudaStream_t, const transformer_engine::TensorWrapper&, bool, bool)’ was hidden [-Woverloaded-virtual=]
+    262 |   void copy_into_buffer(cudaStream_t stream, const TensorWrapper &source, bool local_chunk,
+        |        ^~~~~~~~~~~~~~~~
+  /home/scratch.jianbingd_sw/LLM/TransformerEngine/transformer_engine/pytorch/csrc/extensions/../extensions.h:549:8: note:   by ‘void CommOverlapP2P::copy_into_buffer(const at::Tensor&, bool)’
+    549 |   void copy_into_buffer(const at::Tensor &input, bool local_chunk = false);
+        |        ^~~~~~~~~~~~~~~~
+  aarch64-linux-gnu-g++ -fno-strict-overflow -Wsign-compare -DNDEBUG -g -O2 -Wall -shared -Wl,-O1 -Wl,-Bsymbolic-functions /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/common.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/activation.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/apply_rope.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/attention.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/bias.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/cast.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/comm_gemm_overlap.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/dropout.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/fp8_block_scaling_partial_cast.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/gemm.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/linear_entropy.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/misc.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/adam.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/compute_scale.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/l2norm.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/scale.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/multi_tensor/sgd.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/normalization.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/nvshmem_comm.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/padding.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/permutation.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/pybind.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/recipe.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/router.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/softmax.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/extensions/transpose.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/quantizer.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/type_converters.o /tmp/tmpvc4ykee9.build-temp/transformer_engine/pytorch/csrc/util.o -L/usr/local/lib/python3.12/dist-packages/torch/lib -L/usr/lib/aarch64-linux-gnu -lc10 -ltorch -ltorch_cpu -ltorch_python -o /tmp/tmp3_cjlacr.build-lib/transformer_engine_torch.cpython-312-aarch64-linux-gnu.so
+  copying /tmp/tmp3_cjlacr.build-lib/transformer_engine_torch.cpython-312-aarch64-linux-gnu.so ->
+  running egg_info
+  creating /tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info
+  writing /tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/PKG-INFO
+  writing dependency_links to /tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/dependency_links.txt
+  writing requirements to /tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/requires.txt
+  writing top-level names to /tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/top_level.txt
+  writing manifest file '/tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/SOURCES.txt'
+  adding license file 'LICENSE'
+  writing manifest file '/tmp/tmpvc4ykee9.build-temp/transformer_engine.egg-info/SOURCES.txt'
+  /usr/local/lib/python3.12/dist-packages/setuptools/command/build_py.py:212: _Warning: Package 'transformer_engine.pytorch.csrc' is absent from the `packages` configuration.
+  !!
+
+          ********************************************************************************
+          ############################
+          # Package would be ignored #
+          ############################
+          Python recognizes 'transformer_engine.pytorch.csrc' as an importable package[^1],
+          but it is absent from setuptools' `packages` configuration.
+
+          This leads to an ambiguous overall configuration. If you want to distribute this
+          package, please make sure that 'transformer_engine.pytorch.csrc' is explicitly added
+          to the `packages` configuration field.
+
+          Alternatively, you can also rely on setuptools' discovery methods
+          (for example by using `find_namespace_packages(...)`/`find_namespace:`
+          instead of `find_packages(...)`/`find:`).
+
+          You can read more about "package discovery" on setuptools documentation page:
+
+          - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+
+          If you don't want 'transformer_engine.pytorch.csrc' to be distributed and are
+          already explicitly excluding 'transformer_engine.pytorch.csrc' via
+          `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+          you can try to use `exclude_package_data`, or `include-package-data=False` in
+          combination with a more fine grained `package-data` configuration.
+
+          You can read more about "package data files" on setuptools documentation page:
+
+          - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+
+
+          [^1]: For Python, any directory (with suitable naming) can be imported,
+                even if it does not contain any `.py` files.
+                On the other hand, currently there is no concept of package data
+                directory, all directories are treated like packages.
+          ********************************************************************************
+
+  !!
+    check.warn(importable)
+  /usr/local/lib/python3.12/dist-packages/setuptools/command/build_py.py:212: _Warning: Package 'transformer_engine.pytorch.csrc.extensions' is absent from the `packages` configuration.
+  !!
+
+          ********************************************************************************
+          ############################
+          # Package would be ignored #
+          ############################
+          Python recognizes 'transformer_engine.pytorch.csrc.extensions' as an importable package[^1],
+          but it is absent from setuptools' `packages` configuration.
+
+          This leads to an ambiguous overall configuration. If you want to distribute this
+          package, please make sure that 'transformer_engine.pytorch.csrc.extensions' is explicitly added
+          to the `packages` configuration field.
+
+          Alternatively, you can also rely on setuptools' discovery methods
+          (for example by using `find_namespace_packages(...)`/`find_namespace:`
+          instead of `find_packages(...)`/`find:`).
+
+          You can read more about "package discovery" on setuptools documentation page:
+
+          - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+
+          If you don't want 'transformer_engine.pytorch.csrc.extensions' to be distributed and are
+          already explicitly excluding 'transformer_engine.pytorch.csrc.extensions' via
+          `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+          you can try to use `exclude_package_data`, or `include-package-data=False` in
+          combination with a more fine grained `package-data` configuration.
+
+          You can read more about "package data files" on setuptools documentation page:
+
+          - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+
+
+          [^1]: For Python, any directory (with suitable naming) can be imported,
+                even if it does not contain any `.py` files.
+                On the other hand, currently there is no concept of package data
+                directory, all directories are treated like packages.
+          ********************************************************************************
+
+  !!
+    check.warn(importable)
+  /usr/local/lib/python3.12/dist-packages/setuptools/command/build_py.py:212: _Warning: Package 'transformer_engine.pytorch.csrc.extensions.multi_tensor' is absent from the `packages` configuration.
+  !!
+
+          ********************************************************************************
+          ############################
+          # Package would be ignored #
+          ############################
+          Python recognizes 'transformer_engine.pytorch.csrc.extensions.multi_tensor' as an importable package[^1],
+          but it is absent from setuptools' `packages` configuration.
+
+          This leads to an ambiguous overall configuration. If you want to distribute this
+          package, please make sure that 'transformer_engine.pytorch.csrc.extensions.multi_tensor' is explicitly added
+          to the `packages` configuration field.
+
+          Alternatively, you can also rely on setuptools' discovery methods
+          (for example by using `find_namespace_packages(...)`/`find_namespace:`
+          instead of `find_packages(...)`/`find:`).
+
+          You can read more about "package discovery" on setuptools documentation page:
+
+          - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+
+          If you don't want 'transformer_engine.pytorch.csrc.extensions.multi_tensor' to be distributed and are
+          already explicitly excluding 'transformer_engine.pytorch.csrc.extensions.multi_tensor' via
+          `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+          you can try to use `exclude_package_data`, or `include-package-data=False` in
+          combination with a more fine grained `package-data` configuration.
+
+          You can read more about "package data files" on setuptools documentation page:
+
+          - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+
+
+          [^1]: For Python, any directory (with suitable naming) can be imported,
+                even if it does not contain any `.py` files.
+                On the other hand, currently there is no concept of package data
+                directory, all directories are treated like packages.
+          ********************************************************************************
+
+  !!
+    check.warn(importable)
+  Editable install will be performed using a meta path finder.
+
+  Options like `package-data`, `include/exclude-package-data` or
+  `packages.find.exclude/include` may have no effect.
+
+  adding '__editable___transformer_engine_2_9_0_dev0_63675389_finder.py'
+  adding '__editable__.transformer_engine-2.9.0.dev0+63675389.pth'
+  creating '/tmp/pip-wheel-0h1r36tt/.tmp-ogscqr0j/transformer_engine-2.9.0.dev0+63675389-0.editable-cp312-cp312-linux_aarch64.whl' and adding '/tmp/tmpp2swsf92transformer_engine-2.9.0.dev0+63675389-0.editable-cp312-cp312-linux_aarch64.whl' to it
+  adding 'transformer_engine-2.9.0.dev0+63675389.dist-info/licenses/LICENSE'
+  adding 'transformer_engine-2.9.0.dev0+63675389.dist-info/METADATA'
+  adding 'transformer_engine-2.9.0.dev0+63675389.dist-info/WHEEL'
+  adding 'transformer_engine-2.9.0.dev0+63675389.dist-info/top_level.txt'
+  adding 'transformer_engine-2.9.0.dev0+63675389.dist-info/RECORD'
+  /usr/local/lib/python3.12/dist-packages/setuptools/command/editable_wheel.py:342: InformationOnly: Editable installation.
+  !!
+
+          ********************************************************************************
+          Please be careful with folders in your working directory with the same
+          name as your package as they may take precedence during imports.
+          ********************************************************************************
+
+  !!
+    with strategy, WheelFile(wheel_path, "w") as wheel_obj:
+  Building editable for transformer_engine (pyproject.toml): finished with status 'done'
+  Created wheel for transformer_engine: filename=transformer_engine-2.9.0.dev0+63675389-0.editable-cp312-cp312-linux_aarch64.whl size=14636 sha256=08c535e34cf7f81a05723d5afa3df7638eb646233035d078710151c6c54716c9
+  Stored in directory: /tmp/pip-ephem-wheel-cache-sxrvjlxl/wheels/2a/5e/e2/9a38a9232d481edf2bd166b9ca9ed0c336c0c941d62e9f3f15
+Successfully built transformer_engine
+Installing collected packages: transformer_engine
+  Attempting uninstall: transformer_engine
+    Found existing installation: transformer_engine 2.9.0.dev0+63675389
+    Uninstalling transformer_engine-2.9.0.dev0+63675389:
+      Removing file or directory /usr/local/lib/python3.12/dist-packages/__editable__.transformer_engine-2.9.0.dev0+63675389.pth
+      Removing file or directory /usr/local/lib/python3.12/dist-packages/__editable___transformer_engine_2_9_0_dev0_63675389_finder.py
+      Removing file or directory /usr/local/lib/python3.12/dist-packages/__pycache__/__editable___transformer_engine_2_9_0_dev0_63675389_finder.cpython-312.pyc
+      Removing file or directory /usr/local/lib/python3.12/dist-packages/transformer_engine-2.9.0.dev0+63675389.dist-info/
+      Successfully uninstalled transformer_engine-2.9.0.dev0+63675389
+Successfully installed transformer_engine-2.9.0.dev0+63675389
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
