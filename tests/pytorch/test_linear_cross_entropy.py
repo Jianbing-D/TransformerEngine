@@ -2,21 +2,77 @@
 #
 # See LICENSE for license information.
 
-import contextlib
 import os
 import typing
-from contextlib import ExitStack
+from dataclasses import dataclass
 
-import numpy as np
 import pytest
 import torch
 import torch.distributed as dist
 
 from transformer_engine.pytorch import linear_cross_entropy
 
+# 1. Define a standardized context to hold your distributed info
+@dataclass
+class DistContext:
+    rank: int
+    world_size: int
+    group: dist.ProcessGroup
+    is_chief: bool
+
+
+# 2. Create a module-scoped fixture
+# This runs ONE time per file, no matter how many test classes you have.
+@pytest.fixture(scope="module")
+def distributed_context():
+    # --- PRE-CHECK ---
+    if "WORLD_SIZE" not in os.environ or int(os.environ["WORLD_SIZE"]) < 2:
+        pytest.skip("Requires torchrun with multiple GPUs (WORLD_SIZE >= 2)")
+
+    # --- SETUP ---
+    is_external_init = dist.is_initialized()
+
+    if not is_external_init:
+        # Initialize only if not already done (e.g., by another test runner)
+        dist.init_process_group(
+            backend="nccl",
+            init_method="env://",
+            world_size=int(os.environ["WORLD_SIZE"]),
+            rank=int(os.environ["RANK"]),
+        )
+
+    # Set device immediately to avoid cross-device pollution
+    local_rank = int(os.environ.get("LOCAL_RANK", os.environ["RANK"]))
+    device = torch.device(f"cuda:{local_rank}")
+    torch.cuda.set_device(device)
+
+    # Gather context data
+    rank = dist.get_rank()
+    world_size = dist.get_world_size()
+    group = dist.group.WORLD
+
+    print(f"[INFO]: Initialized Rank: {rank} / {world_size}")
+
+    context = DistContext(rank=rank, world_size=world_size, group=group, is_chief=(rank == 0))
+
+    # Yield control to the tests
+    yield context
+
+    # --- TEARDOWN ---
+    # Only destroy if we were the ones who initialized it
+    if not is_external_init:
+        dist.destroy_process_group()
+
+
+def get_device_arch_version():
+    device = torch.cuda.current_device()
+    cc = torch.cuda.get_device_capability(device)
+    return cc[0]
+
 @pytest.mark.skipif(
     "WORLD_SIZE" in os.environ and os.environ["WORLD_SIZE"] != "1", reason="Requires single GPU"
 )
+@pytest.mark.skipif(get_device_arch_version() != 10, reason="Requires GPU architecture = 10")
 class TestFusedLinearCrossEntropyDataParallel:
     def cleanup(self):
         torch.cuda.empty_cache()
@@ -318,32 +374,18 @@ class TestFusedLinearCrossEntropyDataParallel:
     ("WORLD_SIZE" not in os.environ or int(os.environ["WORLD_SIZE"]) < 2),  # or True,
     reason="Requires torchrun with multiple GPUs",
 )
+@pytest.mark.skipif(get_device_arch_version() != 10, reason="Requires GPU architecture = 10")
+@pytest.mark.usefixtures("distributed_context")
 class TestFusedLinearCrossEntropyTensorParallel:
-    @classmethod
-    def setup_class(cls):
-        if dist.is_initialized():
-            cls.must_teardown = False
-        else:
-            dist.init_process_group(
-                backend="nccl",
-                init_method="env://",
-                world_size=int(os.environ["WORLD_SIZE"]),
-                rank=int(os.environ["RANK"]),
-            )
-            cls.must_teardown = True
-        cls.tp_group = dist.group.WORLD
-
-        cls.tp_rank = dist.get_rank(cls.tp_group)
-        cls.tp_world_size = dist.get_world_size(cls.tp_group)
-        cls.is_chief = cls.tp_rank == 0
-        device = torch.device(f"cuda:{cls.tp_rank}")
-        torch.cuda.set_device(device)
-        print(f"[INFO]: TP rank: {cls.tp_rank}, TP world size: {cls.tp_world_size}")
-
-    @classmethod
-    def teardown_class(cls):
-        if cls.must_teardown:
-            dist.destroy_process_group()
+    @pytest.fixture(autouse=True)
+    def setup_attrs(self, distributed_context):
+        """
+        Setup attributes for the test class.
+        """
+        self.tp_group = distributed_context.group
+        self.tp_rank = distributed_context.rank
+        self.tp_world_size = distributed_context.world_size
+        self.is_chief = distributed_context.is_chief
 
     def cleanup(self):
         torch.cuda.empty_cache()
@@ -458,6 +500,7 @@ class TestFusedLinearCrossEntropyTensorParallel:
     @pytest.mark.parametrize("problem", [(4096, 129280, 8192)])
     def test_torch_tp_vs_single_gpu(self, dtype, reduction, problem):
         num_tokens, vocabsize, dim = problem
+        vocabsize = vocabsize // self.tp_world_size
 
         hidden = (
             torch.empty((num_tokens, dim), dtype=dtype, device="cuda")
@@ -771,32 +814,18 @@ class TestFusedLinearCrossEntropyTensorParallel:
     "WORLD_SIZE" not in os.environ or int(os.environ["WORLD_SIZE"]) < 2,
     reason="Requires torchrun with multiple GPUs",
 )
+@pytest.mark.skipif(get_device_arch_version() != 10, reason="Requires GPU architecture = 10")
+@pytest.mark.usefixtures("distributed_context")
 class TestFusedLinearCrossEntropySequenceParallel:
-    @classmethod
-    def setup_class(cls):
-        if dist.is_initialized():
-            cls.must_teardown = False
-        else:
-            dist.init_process_group(
-                backend="nccl",
-                init_method="env://",
-                world_size=int(os.environ["WORLD_SIZE"]),
-                rank=int(os.environ["RANK"]),
-            )
-            cls.must_teardown = True
-        cls.tp_group = dist.group.WORLD
-
-        cls.tp_rank = dist.get_rank(cls.tp_group)
-        cls.tp_world_size = dist.get_world_size(cls.tp_group)
-        cls.is_chief = cls.tp_rank == 0
-        device = torch.device(f"cuda:{cls.tp_rank}")
-        torch.cuda.set_device(device)
-        print(f"[INFO]: TP rank: {cls.tp_rank}, TP world size: {cls.tp_world_size}")
-
-    @classmethod
-    def teardown_class(cls):
-        if cls.must_teardown:
-            dist.destroy_process_group()
+    @pytest.fixture(autouse=True)
+    def setup_attrs(self, distributed_context):
+        """
+        Setup attributes for the test class.
+        """
+        self.tp_group = distributed_context.group
+        self.tp_rank = distributed_context.rank
+        self.tp_world_size = distributed_context.world_size
+        self.is_chief = distributed_context.is_chief
 
     @staticmethod
     def timed_barrier(timeout_s=10):
@@ -941,9 +970,10 @@ class TestFusedLinearCrossEntropySequenceParallel:
 
     @pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float16])
     @pytest.mark.parametrize("reduction", ["mean", "sum", "none"])
-    @pytest.mark.parametrize("problem", [(256, 12928, 8192)])
-    def test_torch_tp_vs_single_gpu(self, dtype, reduction, problem):
+    @pytest.mark.parametrize("problem", [(256, 129280, 8192)])
+    def test_torch_sp_vs_single_gpu(self, dtype, reduction, problem):
         num_tokens, vocabsize, dim = problem
+        vocabsize = vocabsize // self.tp_world_size
 
         hidden = (
             torch.empty((num_tokens, dim), dtype=dtype, device="cuda")
