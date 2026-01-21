@@ -18,6 +18,7 @@ from transformer_engine.common.cutedsl.linear_cross_entropy import (
     utils,
 )
 from transformer_engine.common.triton import linear_cross_entropy as triton_kernels
+from transformer_engine.pytorch.ops.basic import cublas
 
 
 @dataclass
@@ -300,7 +301,7 @@ def backward(
         and num_valid_tokens.dtype == torch.int64
     )
 
-    d_hidden = torch.empty_like(global_hidden)
+    d_hidden = torch.empty_like(global_hidden, dtype=torch.float32)
     d_weight = torch.empty_like(weight)
     assert d_hidden.is_contiguous() and d_weight.is_contiguous()
 
@@ -382,14 +383,32 @@ def backward(
             )
             valid_d_logits = _d_logits[:, :vocab_right_bound]
 
-            torch.addmm(
+            # torch.addmm(
+            #     input=d_hidden.view(-1, dim),
+            #     mat1=valid_d_logits,
+            #     mat2=weight[split_idx * vocab_per_split : (split_idx + 1) * vocab_per_split, :],
+            #     beta=(split_idx != 0),
+            #     alpha=1.0,
+            #     out=d_hidden.view(-1, dim),
+            # )
+            cublas.addmm(
                 input=d_hidden.view(-1, dim),
                 mat1=valid_d_logits,
                 mat2=weight[split_idx * vocab_per_split : (split_idx + 1) * vocab_per_split, :],
-                beta=(split_idx != 0),
+                beta=split_idx != 0,
                 alpha=1.0,
                 out=d_hidden.view(-1, dim),
+                out_dtype=d_hidden.dtype,
             )
+            # _delta_hidden = torch.mm(
+            #     valid_d_logits,
+            #     weight[split_idx * vocab_per_split : (split_idx + 1) * vocab_per_split, :],
+            #     out_dtype=torch.float32,
+            # )
+            # if split_idx == 0:
+            #     d_hidden.copy_(_delta_hidden)
+            # else:
+            #     d_hidden.add_(_delta_hidden)
             torch.matmul(
                 valid_d_logits.T,
                 hidden_view,
@@ -410,5 +429,8 @@ def backward(
                 tp_rank * partial_num_tokens : (tp_rank + 1) * partial_num_tokens, :
             ]
             d_hidden = d_hidden.view(partial_hidden_shape).clone()
+
+    # conver d_hidden to original dtype
+    d_hidden = d_hidden.type_as(global_hidden)
 
     return d_hidden, d_weight

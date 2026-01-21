@@ -32,3 +32,4 @@ from .quantize import Quantize
 from .reduce_scatter import ReduceScatter
 from .reshape import Reshape
 from .rmsnorm import RMSNorm
+from .cublas import addmm
