@@ -171,4 +171,7 @@ def addmm(
         >>> B = torch.randn(512, 2048, device='cuda')
         >>> C = addmm(bias, A, B, alpha=1.0, beta=0.0)
     """
+    # If out is provided and is not the same tensor as input, copy input's values into out
+    if out is not None and out.data_ptr() != input.data_ptr() and beta != 0.0:
+        out.copy_(input)
     return cublas_gemm(mat1, mat2, out, alpha, beta, False, False, out_dtype)
