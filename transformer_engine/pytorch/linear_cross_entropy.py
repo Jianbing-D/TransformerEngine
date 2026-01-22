@@ -7,18 +7,16 @@ Fuse cross entropy with linear layer.
 
 import typing
 from functools import lru_cache
-
 import torch
 
-
-class Platform:
+class Implementation:
     """
     Singleton class for targeted GPU platform.
     """
 
-    _instance: typing.Optional["Platform"] = None
+    _instance: typing.Optional["Implementation"] = None
 
-    def __new__(cls) -> "Platform":
+    def __new__(cls) -> "Implementation":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -32,23 +30,25 @@ class Platform:
         cc = torch.cuda.get_device_capability(device)
 
         if cc[0] == 10:
-            from transformer_engine.pytorch.cutedsl import linear_cross_entropy_blackwell as gpu_entry
-
-            self.forward_func: typing.Callable[..., typing.Any] = gpu_entry.forward
-            self.backward_func: typing.Callable[..., typing.Any] = gpu_entry.backward
+            from transformer_engine.pytorch.cutedsl import linear_cross_entropy_entry as impl
+            self.forward_func: typing.Callable[..., typing.Any] = impl.forward
+            self.backward_func: typing.Callable[..., typing.Any] = impl.backward
         else:
-            raise ValueError(f"Unsupported architecture: {cc[0]}")
+            raise ValueError(f"Unsupported architecture: {cc[0]}. Shall be delegated to Triton")
 
         self._initialized = True
 
+    @property
+    def impl(self) -> typing.Any:
+        return self._impl
+
 
 @lru_cache(maxsize=1)
-def _get_platform() -> Platform:
+def _get_impl() -> Implementation:
     """
-    Helper function to lazy initialize the platform.
+    Helper function to lazy initialize the Implementation.
     """
-    return Platform()
-
+    return Implementation()
 
 class LinearCrossEntropy(torch.autograd.Function):
     """
@@ -167,7 +167,7 @@ class LinearCrossEntropy(torch.autograd.Function):
                 tp_rank,
                 tp_world_size,
                 global_hidden,
-            ) = _get_platform().forward_func(
+            ) = _get_impl().forward_func(
                 hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
             )
             ctx.save_for_backward(global_hidden, weight, labels, _maximum, _acc, _num_valid_tokens)
@@ -204,7 +204,7 @@ class LinearCrossEntropy(torch.autograd.Function):
             tp_world_size = ctx.tp_world_size
             sequence_parallel = ctx.sequence_parallel
 
-            d_hidden, d_weight = _get_platform().backward_func(
+            d_hidden, d_weight = _get_impl().backward_func(
                 dlogprobs,
                 global_hidden,
                 weight,

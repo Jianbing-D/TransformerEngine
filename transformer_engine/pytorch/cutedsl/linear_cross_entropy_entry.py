@@ -15,12 +15,49 @@ import torch.distributed as dist
 import triton
 from cutlass.cute.runtime import from_dlpack
 
-from transformer_engine.common.cutedsl.linear_cross_entropy import (
-    blackwell,
-    utils,
-)
+from transformer_engine.common.cutedsl.linear_cross_entropy import utils
 from transformer_engine.common.triton import linear_cross_entropy as triton_kernels
 from transformer_engine.pytorch.ops.basic import cublas
+
+class Platform:
+    """
+    Singleton class for targeted GPU platform.
+    """
+
+    _instance: typing.Optional["Platform"] = None
+
+    def __new__(cls) -> "Platform":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self) -> None:
+        if getattr(self, "_initialized", False):
+            return
+
+        assert torch.cuda.is_available(), "CUDA is not available"
+        device = torch.cuda.current_device()
+        cc = torch.cuda.get_device_capability(device)
+
+        if cc[0] == 10:
+            from transformer_engine.common.cutedsl.linear_cross_entropy import blackwell as gpu_entry
+            self._gpu_entry = gpu_entry
+        else:
+            raise ValueError(f"Unsupported architecture: {cc[0]}")
+
+        self._initialized = True
+
+    @property
+    def gpu_entry(self) -> typing.Any:
+        return self._gpu_entry
+
+
+@lru_cache(maxsize=1)
+def _get_platform() -> Platform:
+    """
+    Helper function to lazy initialize the platform.
+    """
+    return Platform()
 
 @dataclass
 class FwdConfig:
@@ -184,7 +221,7 @@ def forward(
     # only the number of tokens can vary
     key = f"vocab_size:{vocab_size}+dim:{dim}+dtype:{hidden_view.dtype}"
     if _get_fwd_config()._fwd_mainloop_kernels.get(key) is None:
-        fwd_mainloop_kernel = blackwell.fwd_mainloop.FwdMainLoop(
+        fwd_mainloop_kernel = _get_platform().gpu_entry.fwd_mainloop.FwdMainLoop(
             vocab_per_split=_get_fwd_config()._vocab_per_split
         )
         fwd_mainloop_compiled_kernel = cute.compile(
@@ -390,7 +427,7 @@ def backward(
             f"vocab_size:{vocab_size}+dim:{dim}+reduction:{REDUCTION}+dtype:{hidden_view.dtype}"
         )
         if _get_bwd_config()._bwd_kernel.get(key) is None:
-            bwd_kernel = blackwell.bwd_partial_dlogits.BwdPartialDlogits(
+            bwd_kernel = _get_platform().gpu_entry.bwd_partial_dlogits.BwdPartialDlogits(
                 reduction=REDUCTION.value, vocab_per_split=vocab_per_split
             )
             bwd_kernel_compiled = cute.compile(
