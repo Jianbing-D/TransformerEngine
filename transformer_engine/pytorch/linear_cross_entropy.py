@@ -1,6 +1,4 @@
-# Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-#
-# See LICENSE for license information.
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 
 """
 Linear Cross Entropy API
@@ -8,6 +6,7 @@ Fuse cross entropy with linear layer.
 """
 
 import typing
+from functools import lru_cache
 
 import torch
 
@@ -43,7 +42,12 @@ class Platform:
         self._initialized = True
 
 
-_platform = Platform()
+@lru_cache(maxsize=1)
+def _get_platform() -> Platform:
+    """
+    Helper function to lazy initialize the platform.
+    """
+    return Platform()
 
 
 class LinearCrossEntropy(torch.autograd.Function):
@@ -155,10 +159,16 @@ class LinearCrossEntropy(torch.autograd.Function):
         ```
         """
         with torch.cuda.nvtx.range("LinearCrossEntropy-forward"):
-            logprobs, _maximum, _acc, _num_valid_tokens, tp_rank, tp_world_size, global_hidden = (
-                _platform.forward_func(
-                    hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
-                )
+            (
+                logprobs,
+                _maximum,
+                _acc,
+                _num_valid_tokens,
+                tp_rank,
+                tp_world_size,
+                global_hidden,
+            ) = _get_platform().forward_func(
+                hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
             )
             ctx.save_for_backward(global_hidden, weight, labels, _maximum, _acc, _num_valid_tokens)
             ctx.tp_group = tp_group
@@ -194,7 +204,7 @@ class LinearCrossEntropy(torch.autograd.Function):
             tp_world_size = ctx.tp_world_size
             sequence_parallel = ctx.sequence_parallel
 
-            d_hidden, d_weight = _platform.backward_func(
+            d_hidden, d_weight = _get_platform().backward_func(
                 dlogprobs,
                 global_hidden,
                 weight,
