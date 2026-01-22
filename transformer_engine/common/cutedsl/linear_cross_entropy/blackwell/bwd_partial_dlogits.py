@@ -135,7 +135,6 @@ class BwdPartialDlogits:
         mB: cute.Tensor,
         mLabels: cute.Tensor,
         mDlogprobs: cute.Tensor,
-        mMaximum: cute.Tensor,
         mAccu: cute.Tensor,
         mDlogits_partial: cute.Tensor,
         scalarNumValidTokens: cute.Pointer,
@@ -371,7 +370,6 @@ class BwdPartialDlogits:
 
             # [tileM]
             gLabels = cute.local_tile(mLabels, (self.epi_tile[0],), (pidm,))
-            gMaximum = cute.local_tile(mMaximum, (self.epi_tile[0],), (pidm,))
             gAccu = cute.local_tile(mAccu, (self.epi_tile[0],), (pidm,))
 
             # slice along M direction
@@ -385,9 +383,6 @@ class BwdPartialDlogits:
             tMgLabels = thr_copy_g2r_int64.partition_S(cute.append_ones(gLabels))
             tMrLabels = cute.make_fragment(tMgLabels.shape, tMgLabels.element_type)
             cute.copy(tiled_copy_g2r_int64, tMgLabels, tMrLabels, pred=tMCAcc_mask)
-            tMgMaximum = thr_copy_g2r_fp32.partition_S(cute.append_ones(gMaximum))
-            tMrMaximum = cute.make_fragment(tMgMaximum.layout, tMgMaximum.element_type)
-            cute.copy(tiled_copy_g2r_fp32, tMgMaximum, tMrMaximum, pred=tMCAcc_mask)
             tMgAccu = thr_copy_g2r_fp32.partition_S(cute.append_ones(gAccu))
             tMrAccu = cute.make_fragment(tMgAccu.layout, tMgAccu.element_type)
             cute.copy(tiled_copy_g2r_fp32, tMgAccu, tMrAccu, pred=tMCAcc_mask)
@@ -406,9 +401,9 @@ class BwdPartialDlogits:
                 tMgDlogprobs = thr_copy_g2r_fp32.partition_S(cute.append_ones(gDlogprobs))
                 cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs, tMrDlogprobs, pred=tMCAcc_mask)
 
-            tMrAccu[0] = cute.arch.rcp_approx(tMrAccu[0])
+            
+            # NOTE: accumuate has already been converted to LSE
             tMrDlogprobs[0] *= tMrLabels[0] != ignore_index
-            tMr_d_acc_exp_logits = tMrDlogprobs[0] * tMrAccu[0]
 
             # ------ Partial output ------ #
             # [tileM, tileN]
@@ -466,8 +461,8 @@ class BwdPartialDlogits:
                 )
 
                 for idx in cutlass.range(cute.size(tTMEM_load_rAcc, mode=[0]), unroll_full=True):
-                    # exp_logits
-                    tTMEM_load_rAcc[idx] = cute.exp(tTMEM_load_rAcc[idx] - tMrMaximum[0])
+                    # softmax
+                    tTMEM_load_rAcc[idx] = cute.exp(tTMEM_load_rAcc[idx] - tMrAccu[0])
 
                     position: cutlass.Int64 = (
                         rank * problem_mnk[1]
@@ -480,7 +475,7 @@ class BwdPartialDlogits:
                         position == tMrLabels[0] and tMrLabels[0] != ignore_index
                     )
                     # d_logits
-                    tTMEM_load_rAcc[idx] *= tMr_d_acc_exp_logits
+                    tTMEM_load_rAcc[idx] *= tMrDlogprobs[0]
                     tTMEM_load_rAcc[idx] += mask * -tMrDlogprobs[0]
                     dLogits_half[idx] = tTMEM_load_rAcc[idx].to(dLogits_half.element_type)
 
@@ -510,7 +505,6 @@ class BwdPartialDlogits:
         weight: cute.Tensor,
         labels: cute.Tensor,
         dlogprobs: cute.Tensor,
-        maximum: cute.Tensor,
         accu: cute.Tensor,
         dlogits_partial: cute.Tensor,
         scalarNumValidTokens: cute.Pointer,
@@ -619,7 +613,6 @@ class BwdPartialDlogits:
             tma_tensor_b,
             labels,
             dlogprobs,
-            maximum,
             accu,
             dlogits_partial,
             scalarNumValidTokens,

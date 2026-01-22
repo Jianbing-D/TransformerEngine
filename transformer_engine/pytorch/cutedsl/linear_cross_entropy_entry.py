@@ -315,7 +315,7 @@ def forward(
         # reduce accumulate
         dist.all_reduce(accumulate, op=dist.ReduceOp.SUM, group=tp_group)
 
-        # update logprobs
+        # update logprobs and convert accumulate to LSE
         torch.cuda.current_stream().wait_event(_get_fwd_config()._dedicated_events[1])
         triton_kernels.forward_tp_epilogue_update_logprobs[grid](
             num_tokens,
@@ -335,7 +335,6 @@ def forward(
 
     return (
         logprobs,
-        maximum,
         accumulate,
         num_valid_tokens,
         tp_rank,
@@ -348,7 +347,6 @@ def backward(
     global_hidden: torch.Tensor,
     weight: torch.Tensor,
     labels: torch.Tensor,
-    maximum: torch.Tensor,
     accu: torch.Tensor,
     num_valid_tokens: torch.Tensor,
     reduction: typing.Literal["none", "sum", "mean"] = "mean",
@@ -408,9 +406,6 @@ def backward(
         dlogprobs_packed = from_dlpack(
             dlogprobs_view.detach(), assumed_align=8
         ).mark_compact_shape_dynamic(mode=0)
-        maximum_packed = from_dlpack(
-            maximum.detach(), assumed_align=8
-        ).mark_compact_shape_dynamic(mode=0)
         accu_packed = from_dlpack(accu.detach(), assumed_align=8).mark_compact_shape_dynamic(
             mode=0
         )
@@ -437,7 +432,6 @@ def backward(
                 weight_packed,
                 labels_packed,
                 dlogprobs_packed,
-                maximum_packed,
                 accu_packed,
                 dlogits_packed,
                 scalarNumValidTokens_packed,
@@ -456,7 +450,6 @@ def backward(
                 weight_packed,
                 labels_packed,
                 dlogprobs_packed,
-                maximum_packed,
                 accu_packed,
                 dlogits_packed,
                 scalarNumValidTokens_packed,

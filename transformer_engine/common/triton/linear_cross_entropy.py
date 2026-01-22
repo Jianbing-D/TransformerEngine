@@ -107,6 +107,8 @@ def forward_dp_epilogue(
 
     # store maximum
     tl.store(global_max_ptr + offs_m * stride_global_max, global_max, mask=offs_m < num_tokens)
+    # convert accumulate to LSE
+    global_accu = tl.log(global_accu) + global_max
     # store accumulate
     tl.store(global_accu_ptr + offs_m * stride_global_accu, global_accu, mask=offs_m < num_tokens)
     # update logprobs
@@ -115,7 +117,8 @@ def forward_dp_epilogue(
     )
     global_logprobs_ptrs = global_logprobs_ptr + offs_m * stride_global_logprobs
     global_logprobs = tl.load(global_logprobs_ptrs, mask=offs_m < num_tokens)
-    global_logprobs = global_max + tl.log(global_accu) - global_logprobs
+    # accumulate has been converted to LSE
+    global_logprobs = global_accu - global_logprobs
     label_mask = labels != ignore_index
     global_logprobs = tl.where(label_mask, global_logprobs, 0.0)
 
@@ -238,7 +241,11 @@ def forward_tp_epilogue_update_logprobs(
     )
     label_mask = labels != ignore_index
 
-    logprobs = maximum + tl.log(accumulate) - logprobs
+    # convert accumulate to LSE
+    accumulate = tl.log(accumulate) + maximum
+    tl.store(accumulate_ptr + offs_m * stride_accumulate, accumulate, mask=offs_m < num_tokens)
+
+    logprobs = accumulate - logprobs
     logprobs = tl.where(label_mask, logprobs, 0.0)
 
     if REDUCTION == 0:  # no-reduction
