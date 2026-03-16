@@ -604,7 +604,7 @@ TMEM layout (512 columns total):
 
 #### Three-phase pipeline
 
-$$\underbrace{\mathbf{Z}_{\text{tile}} = \mathbf{W}_{\text{tile}}\,\mathbf{h}^\top}_{\text{Phase 1: logits GEMM}} \;\longrightarrow\; \underbrace{p_{t,v} = \exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v=y_t]}}_{\text{Phase 2: softmax WG}} \;\longrightarrow\; \begin{cases} \dfrac{\partial L}{\partial \mathbf{W}_{\text{tile}}} = \mathbf{p}^\top \mathbf{h} & \text{Phase 3a} \\[6pt] \dfrac{\partial L}{\partial \mathbf{h}} \mathrel{+}= \mathbf{p}\,\mathbf{W}_{\text{tile}} & \text{Phase 3b} \end{cases}$$
+$$\underbrace{\mathbf{Z}_{\text{tile}} = \mathbf{W}_{\text{tile}}\,\mathbf{h}^\top}_{\text{Phase 1: logits GEMM}} \;\longrightarrow\; \underbrace{p_{t,v} = \exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v=y_t]}}_{\text{Phase 2: softmax WG}} \;\longrightarrow\; \begin{cases} \dfrac{\partial L}{\partial \mathbf{W}_{\text{tile}}} = \mathbf{p}^\top \mathbf{h} & \text{Phase 3a} \\ \dfrac{\partial L}{\partial \mathbf{h}} \mathrel{+}= \mathbf{p}\,\mathbf{W}_{\text{tile}} & \text{Phase 3b} \end{cases}$$
 
 **Key insight**: Both Phases 3a and 3b read $\mathbf{p}$ directly from TMEM — no GMEM round-trip for the softmax probabilities. Weight $\mathbf{W}_{\text{tile}}$ must still be read twice (Phase 1 for logits, Phase 3b for d\_hidden), but both reads occur within the same kernel, improving L2 cache reuse.
 
