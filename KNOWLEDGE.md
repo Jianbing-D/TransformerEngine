@@ -444,24 +444,29 @@ DeepSeek-style: `T=4096 tokens, V=129280 vocab, D=7168 dim, BF16 (2B/element)`
 
 ### 15.1 Mathematical Foundation
 
-The full computation:
-```
-Forward:
-  z_{t,v}  = Σ_d h_{t,d} × W_{v,d}          (GEMM: T×V)
-  m_t      = max_v z_{t,v}                   (online max)
-  A_t      = Σ_v exp(z_{t,v} - m_t)         (partition function, shifted)
-  LSE_t    = log(A_t) + m_t                  (log-sum-exp)
-  NLL_t    = LSE_t - z_{t, y_t}             (cross-entropy)
+**Forward pass** — computing the NLL loss from hidden states $\mathbf{h} \in \mathbb{R}^{T \times D}$ and weight matrix $\mathbf{W} \in \mathbb{R}^{V \times D}$, with integer labels $y \in \mathbb{Z}^T$:
 
-Backward (chain rule):
-  ∂NLL_t / ∂z_{t,v} = softmax(z_t)[v] - 1_{v=y_t}
-                     = exp(z_{t,v} - LSE_t) - 1_{v=y_t}
-  d_z_{t,v} = dL_t × (exp(z_{t,v} - LSE_t) - 1_{v=y_t})
-  d_h_t    = Σ_v d_z_{t,v} × W_v     (d_hidden)
-  d_W_v    = Σ_t d_z_{t,v} × h_t     (d_weight)
-```
+$$z_{t,v} = \sum_{d} h_{t,d} \cdot W_{v,d} \qquad \text{(logits via GEMM, shape } T \times V \text{)}$$
 
-**Key property**: `d_z` depends on `z` (logits), which were not saved. They must be recomputed from `h` and `W`. This is the source of the 3× backward FLOPs vs forward.
+$$m_t = \max_v z_{t,v} \qquad \text{(running max for numerical stability)}$$
+
+$$A_t = \sum_v \exp(z_{t,v} - m_t) \qquad \text{(shifted partition function)}$$
+
+$$\mathrm{LSE}_t = \log A_t + m_t \qquad \text{(log-sum-exp)}$$
+
+$$\mathrm{NLL}_t = \mathrm{LSE}_t - z_{t,\, y_t} \qquad \text{(cross-entropy loss)}$$
+
+**Backward pass** — via chain rule:
+
+$$\frac{\partial \mathrm{NLL}_t}{\partial z_{t,v}} = \mathrm{softmax}(z_t)_v - \mathbf{1}_{[v = y_t]} = \exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v = y_t]}$$
+
+$$\frac{\partial L}{\partial z_{t,v}} = \frac{\partial L}{\partial \mathrm{NLL}_t} \cdot \Bigl(\exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v = y_t]}\Bigr)$$
+
+$$\frac{\partial L}{\partial h_t} = \sum_v \frac{\partial L}{\partial z_{t,v}} \cdot W_v \qquad \text{(d\_hidden, shape } T \times D \text{)}$$
+
+$$\frac{\partial L}{\partial W_v} = \sum_t \frac{\partial L}{\partial z_{t,v}} \cdot h_t \qquad \text{(d\_weight, shape } V \times D \text{)}$$
+
+**Key property**: $\partial L / \partial z_{t,v}$ depends on $z_{t,v}$ (the logits), which were not saved. They must be recomputed from $\mathbf{h}$ and $\mathbf{W}$. This is the source of the 3× backward FLOPs vs forward.
 
 ---
 
@@ -498,11 +503,13 @@ Observed: **17.76 ms** → ~64% SM efficiency.
 
 ### 15.3 Why 3× Backward FLOPs Is Unavoidable (When Logits Are Not Saved)
 
-The backward requires computing `exp(z_{t,v} - LSE_t)` for every `(t,v)`, which requires `z_{t,v}`. Since `z_{t,v} = h_t @ W_v^T` and this was not saved, it must be recomputed. The GEMM to recompute logits has the same cost as the forward GEMM.
+The backward requires $\exp(z_{t,v} - \mathrm{LSE}_t)$ for every $(t, v)$, which requires $z_{t,v}$. Since $z_{t,v} = \mathbf{h}_t \cdot \mathbf{W}_v^\top$ was not saved, the full GEMM must be re-run at the same cost as the forward. Then:
 
-Then `d_h = d_z @ W` (same cost) and `d_W = d_z^T @ h` (same cost). Total = 3× forward.
+$$\underbrace{\mathbf{z} = \mathbf{h}\mathbf{W}^\top}_{\text{recompute, } 1\times \text{fwd}} \qquad \underbrace{\frac{\partial L}{\partial \mathbf{h}} = \frac{\partial L}{\partial \mathbf{z}} \cdot \mathbf{W}}_{\text{d\_hidden, } 1\times \text{fwd}} \qquad \underbrace{\frac{\partial L}{\partial \mathbf{W}} = \left(\frac{\partial L}{\partial \mathbf{z}}\right)^\top \mathbf{h}}_{\text{d\_weight, } 1\times \text{fwd}}$$
 
-**The only escape from 3× backward**: store the full logit tensor `z` (T×V×2B = 1.05 GB for reference config). This trades the extra 2× GEMM compute for 1.05 GB of HBM. The LCE fusion explicitly rejects this trade — its purpose is to avoid storing `z`.
+Total backward FLOPs $= 3 \times$ forward. This is a **hard lower bound** when logits are not stored.
+
+**The only escape**: store the full logit tensor $\mathbf{z}$ ($T \times V \times 2\,\text{B} = 1.05\,\text{GB}$ for the reference config). This trades 2× GEMM compute for 1.05 GB of HBM — exactly what LCE fusion is designed to avoid.
 
 ---
 
@@ -516,10 +523,14 @@ Then `d_h = d_z @ W` (same cost) and `d_W = d_z^T @ h` (same cost). Total = 3× 
 #### Proposed: Token-centric tiling
 - Grid: `(num_m_tiles, 1, 1)` tiled to SM count
 - Each CTA: 1 token tile × **all vocab splits**
-- Inner loop over splits, maintaining running `max_reg[128]` and `accu_reg[128]` in registers
-- Write final `LSE[T]` and `logprobs[T]` directly — no Triton epilogue
+- Inner loop over splits, maintaining running $m_t$ and $A_t$ in registers across splits
+- Write final $\mathrm{LSE}_t$ and $\mathrm{NLL}_t$ directly — no Triton epilogue
 
-```
+The online update rule across splits is the standard two-pass softmax merger. For a new partial max $m'$ arriving from the next vocab tile:
+
+$$m_t \leftarrow \max(m_t,\; m') \qquad A_t \leftarrow e^{m_t^{\,\mathrm{old}} - m_t} \cdot A_t + e^{m' - m_t} \cdot A'$$
+
+```python
 # Pseudocode: token-centric forward
 while m_work.is_valid:
     pidm = m_work.tile_idx
@@ -566,7 +577,7 @@ Use **atomic** global reduction to merge per-split statistics:
 - Each CTA writes its `(partial_max_s, partial_accu_s)` and atomically updates a global `(max, accu)` for each token using CAS or atomic max/add.
 - When all splits for a token are done, the epilogue is implicitly merged.
 
-**Challenge**: atomic max on FP32 requires careful handling; `accu` update requires `exp(partial_max_s - global_max) * partial_accu_s` which is non-trivially atomic (needs read-modify-write with correction factor). This is fundamentally non-atomic without synchronization.
+**Challenge**: The accumulator update $A_t \leftarrow e^{m_s - m_t^{\,\mathrm{global}}} \cdot A_s$ is a read-modify-write with a data-dependent scale factor — this is not expressible as a single atomic operation and requires full synchronization.
 
 **Verdict**: Not practical in this form. The Triton epilogue reduction is actually correct and efficient for the split-centric approach.
 
@@ -592,12 +603,10 @@ TMEM layout (512 columns total):
 ```
 
 #### Three-phase pipeline
-1. **Phase 1**: GEMM: logits = W_tile @ h^T → logits in TMEM
-2. **Phase 2**: Softmax WG applies `exp(logit - LSE) - 1_{label}` → `p` in TMEM
-3. **Phase 3a**: `d_W_tile = p^T @ h` (d_W GEMM using p from TMEM as A, h as B)
-3. **Phase 3b**: `d_h += p @ W_tile` (d_H GEMM using p from TMEM as A, W_tile as B)
 
-**Key insight**: Phases 3a and 3b both READ `p` from TMEM (no extra GMEM read for p). Weight must still be read twice: once for Phase 1 (logits), once for Phase 3b (d_hidden). But this is done in the same kernel, potentially with better cache reuse.
+$$\underbrace{\mathbf{Z}_{\text{tile}} = \mathbf{W}_{\text{tile}}\,\mathbf{h}^\top}_{\text{Phase 1: logits GEMM}} \;\longrightarrow\; \underbrace{p_{t,v} = \exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v=y_t]}}_{\text{Phase 2: softmax WG}} \;\longrightarrow\; \begin{cases} \dfrac{\partial L}{\partial \mathbf{W}_{\text{tile}}} = \mathbf{p}^\top \mathbf{h} & \text{Phase 3a} \\[6pt] \dfrac{\partial L}{\partial \mathbf{h}} \mathrel{+}= \mathbf{p}\,\mathbf{W}_{\text{tile}} & \text{Phase 3b} \end{cases}$$
+
+**Key insight**: Both Phases 3a and 3b read $\mathbf{p}$ directly from TMEM — no GMEM round-trip for the softmax probabilities. Weight $\mathbf{W}_{\text{tile}}$ must still be read twice (Phase 1 for logits, Phase 3b for d\_hidden), but both reads occur within the same kernel, improving L2 cache reuse.
 
 **Bandwidth savings vs kDlogitsSplitN**:
 - Eliminates `_d_logits[T, vocab_per_split]` writes/reads: saves 75 MB per split × 42 = 3.15 GB
@@ -644,23 +653,15 @@ For LCE: logits can span large dynamic range (good for BF16 exponent bits). Prec
 The SM100 tcgen05 MMA accumulates in FP32 within TMEM even for BF16 inputs. This is correct — no loss compared to FP32-input GEMM.
 
 #### The d_logits precision issue
-When `BwdPartialDlogits` writes `d_logits` to GMEM, it casts from FP32 (TMEM) to BF16:
-```python
-dLogits_half[idx] = tTMEM_load_rAcc[idx].to(dLogits_half.element_type)
-```
-- `d_logits = dL × (softmax(z) - one_hot)` is computed in FP32
-- Cast to BF16 for storage → 7 mantissa bits
-- Then `d_hidden = d_logits @ W` (BF16 GEMM with FP32 accumulation in cuBLAS)
+`BwdPartialDlogits` computes the gradient in FP32 (from TMEM) then casts to BF16 for storage:
 
-For tokens where `softmax(z)[label] ≈ 1.0`, `d_logits[label] ≈ dL × (1 - 1) = 0` (fine). For tokens where `softmax(z)[v] ≈ 1e-4`, `d_logits[v] ≈ dL × 1e-4` — BF16 relative error is ~1% → absolute error ~`dL × 1e-6`. This is acceptable for training.
+$$\frac{\partial L}{\partial z_{t,v}} = \underbrace{\frac{\partial L}{\partial \mathrm{NLL}_t}}_{\text{FP32}} \cdot \underbrace{\bigl(\exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v=y_t]}\bigr)}_{\text{FP32 in TMEM}} \xrightarrow{\text{cast}} \text{BF16}$$
+
+For a high-confidence token where $\mathrm{softmax}(z_t)_{y_t} \approx 1$, the label gradient is nearly zero and survives the cast. For a low-probability class with $\mathrm{softmax}(z_t)_v \approx 10^{-4}$, BF16's ~1% relative error introduces an absolute error of $\sim \!\frac{\partial L}{\partial \mathrm{NLL}_t} \times 10^{-6}$ — acceptable for training.
 
 **The `atol=1e-3` tolerance** in tests reflects this BF16 precision ceiling, not a fundamental algorithm issue.
 
-**FP32 d_logits option**:
-- Store d_logits as FP32 → `_d_logits: T×V/num_splits×4B = 50 MB` per split (vs 25 MB BF16)
-- Better gradient precision for small-probability classes
-- Higher bandwidth cost: adds 25 MB extra per split × 42 = 1.05 GB
-- Not worth it for standard training; could matter for distillation or sparse models
+**FP32 d_logits option**: Store $\partial L / \partial \mathbf{z}$ as FP32 — doubles the buffer size to 50 MB per split (+1.05 GB total). Better gradient quality for distillation or sparse-class scenarios; not worth the cost for standard training.
 
 #### FP8 GEMM consideration
 SM100 supports E4M3 / E5M2 FP8 with 2× FLOP density over BF16.
