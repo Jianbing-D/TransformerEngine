@@ -430,3 +430,321 @@ Variables that depend on `(pidm, pidn)` are recomputed per tile inside each warp
 - `gA`, `gB`, TMA partitions (load warp)
 - `num_n_tiles` from `pidn` (all warp groups)
 - Register fragments (`tR2GrMax.fill(-1e30)`, etc.) reset each tile (epilogue warpgroup)
+
+---
+
+## 15. Implementation Brainstorm: Better LCE Fusion (Task-3)
+
+### Reference Configuration
+DeepSeek-style: `T=4096 tokens, V=129280 vocab, D=7168 dim, BF16 (2B/element)`
+- `num_splits = ceil_div(129280, 3072) = 42`
+- `num_m_tiles = ceil_div(4096, 128) = 32`
+
+---
+
+### 15.1 Mathematical Foundation
+
+The full computation:
+```
+Forward:
+  z_{t,v}  = Σ_d h_{t,d} × W_{v,d}          (GEMM: T×V)
+  m_t      = max_v z_{t,v}                   (online max)
+  A_t      = Σ_v exp(z_{t,v} - m_t)         (partition function, shifted)
+  LSE_t    = log(A_t) + m_t                  (log-sum-exp)
+  NLL_t    = LSE_t - z_{t, y_t}             (cross-entropy)
+
+Backward (chain rule):
+  ∂NLL_t / ∂z_{t,v} = softmax(z_t)[v] - 1_{v=y_t}
+                     = exp(z_{t,v} - LSE_t) - 1_{v=y_t}
+  d_z_{t,v} = dL_t × (exp(z_{t,v} - LSE_t) - 1_{v=y_t})
+  d_h_t    = Σ_v d_z_{t,v} × W_v     (d_hidden)
+  d_W_v    = Σ_t d_z_{t,v} × h_t     (d_weight)
+```
+
+**Key property**: `d_z` depends on `z` (logits), which were not saved. They must be recomputed from `h` and `W`. This is the source of the 3× backward FLOPs vs forward.
+
+---
+
+### 15.2 FLOP and Bandwidth Accounting
+
+#### Forward (per reference config)
+| Operation | FLOPs | Bandwidth |
+|-----------|-------|-----------|
+| GEMM (h @ W.T) | 2×4096×129280×7168 = **7.6 TFLOPs** | W: 1.85 GB, h: 58 MB |
+| Online softmax (in TMEM→reg) | negligible | _max write: 672 KB, _accu write: 672 KB |
+| Triton epilogue (reduce splits) | negligible | _max+_accu read: 1.3 MB |
+| **Total** | **7.6 TFLOPs** | **~1.92 GB** |
+
+At GB200 throughput: 7.6 TFLOPs / 2000 TFLOPs/s = **3.8 ms** compute-bound lower bound.
+Observed: **6.12 ms** → ~62% SM efficiency.
+
+**Conclusion: Forward is compute-bound. Weight load (1.85 GB) is the dominant bandwidth cost.**
+
+#### Backward — current `kDlogitsSplitN` (per split, repeated 42×)
+| Operation | FLOPs | Bandwidth |
+|-----------|-------|-----------|
+| BwdPartialDlogits (recompute logits) | 2×4096×3072×7168 = 0.18 TFLOPs | h: 58 MB, W_s: 44 MB, _d_logits write: 25 MB |
+| cuBLAS addmm (d_h += d_logits @ W_s) | 2×4096×7168×3072 = 0.18 TFLOPs | _d_logits read: 25 MB, W_s: 44 MB, d_h read+write: 117 MB |
+| torch.matmul (d_W_s = d_logits.T @ h) | 2×3072×7168×4096 = 0.18 TFLOPs | _d_logits read: 25 MB, h: 58 MB, d_W_s write: 44 MB |
+| **Per-split total** | **0.54 TFLOPs** | **~440 MB** |
+| **42 splits total** | **22.7 TFLOPs = 3× fwd** | **~18.5 GB** |
+
+At GB200: 22.7 TFLOPs / 2000 TFLOPs/s = **11.4 ms** compute-bound lower bound.
+Observed: **17.76 ms** → ~64% SM efficiency.
+
+**Conclusion: Backward is compute-bound. The 3× forward FLOPs is a fundamental lower bound when logits are not saved.**
+
+---
+
+### 15.3 Why 3× Backward FLOPs Is Unavoidable (When Logits Are Not Saved)
+
+The backward requires computing `exp(z_{t,v} - LSE_t)` for every `(t,v)`, which requires `z_{t,v}`. Since `z_{t,v} = h_t @ W_v^T` and this was not saved, it must be recomputed. The GEMM to recompute logits has the same cost as the forward GEMM.
+
+Then `d_h = d_z @ W` (same cost) and `d_W = d_z^T @ h` (same cost). Total = 3× forward.
+
+**The only escape from 3× backward**: store the full logit tensor `z` (T×V×2B = 1.05 GB for reference config). This trades the extra 2× GEMM compute for 1.05 GB of HBM. The LCE fusion explicitly rejects this trade — its purpose is to avoid storing `z`.
+
+---
+
+### 15.4 Forward Improvement: Token-Centric Tiling
+
+#### Current design (split-centric)
+- Grid: `(num_m_tiles × num_splits, 1, 1)` tiled to SM count
+- Each CTA: 1 token tile × 1 vocab split
+- After all CTAs finish: Triton epilogue reduces `_max[T, num_splits]` and `_accu[T, num_splits]` to produce LSE
+
+#### Proposed: Token-centric tiling
+- Grid: `(num_m_tiles, 1, 1)` tiled to SM count
+- Each CTA: 1 token tile × **all vocab splits**
+- Inner loop over splits, maintaining running `max_reg[128]` and `accu_reg[128]` in registers
+- Write final `LSE[T]` and `logprobs[T]` directly — no Triton epilogue
+
+```
+# Pseudocode: token-centric forward
+while m_work.is_valid:
+    pidm = m_work.tile_idx
+    max_reg[:] = -inf
+    accu_reg[:] = 0.0
+    logprob_reg[:] = 0.0
+
+    for pidn in range(num_splits):
+        # GEMM: logits[128, vocab_per_split] via load/MMA pipeline
+        for n in range(num_n_per_split):
+            # online softmax update using logit tile from TMEM
+            max_old = max_reg
+            max_reg = fmax(max_reg, row_max(logit_tile))
+            accu_reg = exp(max_old - max_reg) * accu_reg + sum(exp(logit_tile - max_reg))
+            logprob_reg += (position == label) * logit
+
+    # write LSE and NLL directly
+    LSE = log(accu_reg) + max_reg
+    write(LSE, logprob_reg - LSE, ...)
+    m_work.advance()
+```
+
+**Advantages**:
+- Eliminates `_max[T, num_splits]` + `_accu[T, num_splits]` intermediate tensors (~1.4 MB)
+- Eliminates Triton epilogue kernel launch and synchronization overhead
+- Simpler: single kernel computes final LSE and NLL
+
+**Disadvantages**:
+- Fewer tiles to fill SMs: `num_m_tiles = 32` vs `num_m_tiles × num_splits = 1344`. With 32 CTAs and ~112 SMs, only 32 of 112 SMs are busy → SM occupancy drops to 28%
+- The inner N-axis loop must be sequential (each split's softmax state depends on previous splits)
+- Worse for small `num_tokens` (tiny M dimension)
+
+**When token-centric wins**: `num_tokens >> SM_count` so that `num_m_tiles >> num_splits`. E.g., T=16384 → `num_m_tiles=128 > num_splits=42` → can fill 128 SMs with no stalls.
+
+**When split-centric wins**: Small `num_tokens` (e.g., inference with T=1) but large vocab. More tiles give better SM coverage.
+
+---
+
+### 15.5 Forward Improvement: Eliminating the Triton Epilogue via Atomic Write-back
+
+An alternative approach that keeps split-centric tiling but eliminates the Triton epilogue:
+
+Use **atomic** global reduction to merge per-split statistics:
+- Each CTA writes its `(partial_max_s, partial_accu_s)` and atomically updates a global `(max, accu)` for each token using CAS or atomic max/add.
+- When all splits for a token are done, the epilogue is implicitly merged.
+
+**Challenge**: atomic max on FP32 requires careful handling; `accu` update requires `exp(partial_max_s - global_max) * partial_accu_s` which is non-trivially atomic (needs read-modify-write with correction factor). This is fundamentally non-atomic without synchronization.
+
+**Verdict**: Not practical in this form. The Triton epilogue reduction is actually correct and efficient for the split-centric approach.
+
+---
+
+### 15.6 Backward Improvement: Fused `BwdDHiddenDWeight` (WIP)
+
+The `bwd_dHdW.py` kernel fuses all three backward operations (logit recompute + d_hidden + d_weight) into a single persistent kernel.
+
+#### 16-warp CTA layout
+- **Warps 0-3 (softmax WG)**: Apply softmax to logits, compute d_logits in TMEM
+- **Warps 4-7 (epilog WG)**: Write d_logits to TMEM as `p` (probability) buffer; coordinate d_H and d_W MMA
+- **Warp 8 (load)**: TMA G2S loads for hidden and weight
+- **Warp 9 (MMA)**: Issues tcgen05 GEMM instructions
+- **Warp 10 (store)**: TMA reduce (CpReduceS2G ADD) writes d_hidden and d_weight to GMEM atomically
+- **Warps 11-15 (empty)**: Register dealloc only
+
+#### TMEM allocation
+```
+TMEM layout (512 columns total):
+[logits_cols | d_H_cols | d_W_cols | p_cols]
+= [128 | 128 | 128 | 64] = 448 → rounded up to 512 columns
+```
+
+#### Three-phase pipeline
+1. **Phase 1**: GEMM: logits = W_tile @ h^T → logits in TMEM
+2. **Phase 2**: Softmax WG applies `exp(logit - LSE) - 1_{label}` → `p` in TMEM
+3. **Phase 3a**: `d_W_tile = p^T @ h` (d_W GEMM using p from TMEM as A, h as B)
+3. **Phase 3b**: `d_h += p @ W_tile` (d_H GEMM using p from TMEM as A, W_tile as B)
+
+**Key insight**: Phases 3a and 3b both READ `p` from TMEM (no extra GMEM read for p). Weight must still be read twice: once for Phase 1 (logits), once for Phase 3b (d_hidden). But this is done in the same kernel, potentially with better cache reuse.
+
+**Bandwidth savings vs kDlogitsSplitN**:
+- Eliminates `_d_logits[T, vocab_per_split]` writes/reads: saves 75 MB per split × 42 = 3.15 GB
+- Weight still read 2× per split (same as current): no bandwidth saving on weight
+- net saving: ~3.15 GB / 18.5 GB ≈ 17% bandwidth reduction
+
+**Latency savings**:
+- Eliminates 42 × 3 = 126 CUDA kernel launches (replaces with 1)
+- Better SM continuity (persistent kernel keeps all SMs busy)
+- No Python loop stalling CUDA stream submission
+
+**Disadvantages**:
+- Very complex kernel: 16-warp layout, 3 MMA types, multiple TMEM regions
+- TMEM layout is tight: 512 columns is the exact SM100 capacity
+- TMA reduce (atomic add to d_hidden) may create contention when multiple vocab tiles target the same token rows
+
+---
+
+### 15.7 Backward Improvement: Persistent `BwdPartialDlogits`
+
+A lighter-weight improvement: apply the persistent scheduler to `BwdPartialDlogits` so all 42 splits run in one kernel launch, then call cuBLAS once per split from the host.
+
+This doesn't eliminate the 126 kernel launches but does eliminate the Python-side sequential dispatch latency for the SM100 kernel. The cuBLAS calls would still serialize.
+
+**Better approach**: Use the `StaticPersistentScheduler` inside `BwdPartialDlogits` to iterate over all splits, writing `_d_logits` to GMEM for all splits, then call cuBLAS once per split. The kernel launch overhead drops from 42 launches to 1 for the BwdPartialDlogits stage.
+
+---
+
+### 15.8 Data Type Precision Analysis
+
+#### BF16 vs FP16
+| | BF16 | FP16 |
+|--|------|------|
+| Mantissa bits | 7 | 10 |
+| Exponent bits | 8 | 5 |
+| Dynamic range | Same as FP32 (±3.4×10^38) | ±65504 |
+| Precision | ~0.8% relative error | ~0.1% relative error |
+
+For LCE: logits can span large dynamic range (good for BF16 exponent bits). Precision matters for gradients near zero (d_logits = softmax - one_hot, which can be tiny). BF16 is the current standard.
+
+**FP16 risk**: For logits exceeding ±65504, FP16 overflows to inf/NaN. With logit ~ 10 × weight_norm × hidden_norm, large models can approach this. BF16 is safer.
+
+#### FP32 accumulation in GEMM
+The SM100 tcgen05 MMA accumulates in FP32 within TMEM even for BF16 inputs. This is correct — no loss compared to FP32-input GEMM.
+
+#### The d_logits precision issue
+When `BwdPartialDlogits` writes `d_logits` to GMEM, it casts from FP32 (TMEM) to BF16:
+```python
+dLogits_half[idx] = tTMEM_load_rAcc[idx].to(dLogits_half.element_type)
+```
+- `d_logits = dL × (softmax(z) - one_hot)` is computed in FP32
+- Cast to BF16 for storage → 7 mantissa bits
+- Then `d_hidden = d_logits @ W` (BF16 GEMM with FP32 accumulation in cuBLAS)
+
+For tokens where `softmax(z)[label] ≈ 1.0`, `d_logits[label] ≈ dL × (1 - 1) = 0` (fine). For tokens where `softmax(z)[v] ≈ 1e-4`, `d_logits[v] ≈ dL × 1e-4` — BF16 relative error is ~1% → absolute error ~`dL × 1e-6`. This is acceptable for training.
+
+**The `atol=1e-3` tolerance** in tests reflects this BF16 precision ceiling, not a fundamental algorithm issue.
+
+**FP32 d_logits option**:
+- Store d_logits as FP32 → `_d_logits: T×V/num_splits×4B = 50 MB` per split (vs 25 MB BF16)
+- Better gradient precision for small-probability classes
+- Higher bandwidth cost: adds 25 MB extra per split × 42 = 1.05 GB
+- Not worth it for standard training; could matter for distillation or sparse models
+
+#### FP8 GEMM consideration
+SM100 supports E4M3 / E5M2 FP8 with 2× FLOP density over BF16.
+
+**Risk analysis**:
+- E4M3 range: ±448. Large logits (e.g., dot products of high-norm vectors) may overflow.
+- FP8 requires per-tensor or per-column scaling factors → additional ops
+- Softmax computation requires FP32 intermediate regardless
+- `d_logits = exp(z - LSE) - 1_{label}` requires FP32 for numerical stability
+
+**Verdict**: FP8 for the GEMM is high-risk for correctness without calibration. Not recommended without a quantization framework.
+
+---
+
+### 15.9 Vocab Split Size Tuning
+
+Current default: `vocab_per_split = 3072 = 12 × 256` (12 N-tiles per MMA tiler N=256).
+
+**Effect on forward**:
+- Larger `vocab_per_split` → fewer splits → fewer tiles → less SM coverage for small T
+- Smaller `vocab_per_split` → more splits → more SM coverage but more pipeline setup overhead
+- With persistent scheduler, pipeline setup is amortized → larger splits preferred
+
+**Effect on backward** (kDlogitsSplitN):
+- Larger split → `_d_logits` buffer larger → more GMEM bandwidth per iteration
+- Fewer splits → fewer kernel launches → less launch overhead
+- Optimal balances `_d_logits` buffer size with launch overhead
+
+**Effect on SMEM**:
+- SMEM for A (hidden): `128 × 64 × 4 stages × 2B = 65 KB` (fixed by mma_tiler_k=64)
+- SMEM for B (weight): `256 × 64 × 4 stages × 2B = 131 KB`
+- Total: 196 KB < 256 KB SM100 limit → no SMEM constraint on split size
+- Changing vocab_per_split doesn't change SMEM (only changes the outer loop count)
+
+**Recommendation**: For the fused backward (bwd_dHdW), larger vocab_per_split reduces launch overhead further. For current kDlogitsSplitN, the Python loop makes large splits desirable too (fewer iterations).
+
+---
+
+### 15.10 2-CTA Instructions (use_2cta_instrs=True)
+
+Setting `use_2cta_instrs=True` enables `tcgen05.CtaGroup.TWO` and doubles the N-dimension of the MMA tiler: `mma_tiler_mn = (128, 512)` across 2 CTAs (effective 128×512 per cluster).
+
+**Effect**: Halves the number of N-tiles per split (3072/512 = 6 vs 3072/256 = 12). Fewer pipeline stages, better SM pairing (2 CTAs collaborate).
+
+**Constraint**: Grid must be a multiple of cluster shape (2, 1, 1). With 112 SMs, this is fine.
+
+**Risk**: More complex barrier synchronization between the two CTAs in a cluster. Currently `use_2cta_instrs=False` in both forward and backward kernels.
+
+---
+
+### 15.11 Summary and Recommendations
+
+#### Priority 1 (High Impact, Feasible): Complete `BwdDHiddenDWeight`
+- Replaces 42× (BwdPartialDlogits + cuBLAS + matmul) with 1 persistent kernel
+- Eliminates 3.15 GB of intermediate tensor bandwidth
+- Reduces kernel launch overhead from 126 to 1
+- Expected speedup: eliminate the ~3-5ms of launch overhead + bandwidth savings
+- WIP code already exists in `bwd_dHdW.py` — needs testing and integration
+
+#### Priority 2 (Medium Impact): Token-Centric Forward for Large T
+- Eliminates Triton epilogue (~0.5-1ms overhead) when `num_tokens >> SM_count`
+- Reduces intermediate tensor writes (~1.4 MB)
+- Best for large-batch training (T≥16384)
+- For small T (inference), split-centric is better (more SM coverage)
+
+#### Priority 3 (Low Impact): Persistent BwdPartialDlogits (without full fusion)
+- Apply `StaticPersistentScheduler` to `BwdPartialDlogits` so all splits run in one kernel
+- Still requires sequential cuBLAS calls afterward
+- Reduces BwdPartialDlogits launch overhead from 42 to 1
+- Easy to implement (same pattern as Task-2)
+
+#### Priority 4 (Low Impact): 2-Stage TMEM in BwdPartialDlogits
+- Increase `num_acc_stage` from 1 to 2
+- Allows MMA to write stage 1 while epilogue reads stage 0
+- Better pipeline overlap between MMA and softmax/d_logits computation
+- Requires doubling TMEM to 512 columns (fills SM100 capacity)
+
+#### Summary Table
+
+| Improvement | Memory Δ | Latency Δ | Complexity | Status |
+|-------------|----------|-----------|------------|--------|
+| Token-centric fwd (no Triton epilogue) | −1.4 MB intermediate | −~1ms for large T | Medium | Not started |
+| Fused backward (`bwd_dHdW`) | −3.15 GB/iteration | −~5ms (~30% bwd) | High | WIP |
+| Persistent `BwdPartialDlogits` | None | −~1ms launch overhead | Low | Not started |
+| 2-stage TMEM in bwd | None | −~10% bwd GEMM | Low | Not started |
+| FP8 GEMM | None | −~30% GEMM compute | Very High | Risky |
+| FP32 d_logits | +1.05 GB | −0ms (bandwidth ↑) | Low | Not recommended |

@@ -36,7 +36,7 @@ Tasks:
       - You have access to all files in the current directory.
   - id: 3
     name: "Brain storm better implementation for linear-cross-entropy fusion"
-    status: "not started"
+    status: "completed"
     steps:
       - analyze the linear-cross-entropy fusion algorithm with mathmetical analysis.
       - based on your understanding of the linear-cross-entropy fusion problem, brain storm better implementation for the problem.
