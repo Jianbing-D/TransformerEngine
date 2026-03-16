@@ -1,0 +1,19 @@
+Description: "Tasks for Linear-Cross-Entropy fusion in TransformerEngine"
+StatusDescription: "When a task is complete, the status field would be 'completed'"
+
+Tasks:
+  - id: 1
+    name: "Understand the Linear-Cross-Entropy fusion code structure in TransformerEngine"
+    status: "not started"
+    material:
+      - ./tests/pytorch/test_linear_cross_entropy.py contains the test code for Linear-Cross-Entropy fusion in TransformerEngine.
+      - ./3rdparty/cutlass/ contains the critical components for Linear-Cross-Entropy fusion in TransformerEngine, cutlass and cuteDSL.
+    steps:
+      - read those materials in depth, write a detailed report about the code structure and data flow of Linear-cross-entropy fusion, including tensor shapes, data type.
+      - record critical components and APIs that used in the Linear-cross-entropy fusion, including APIs from triton, APIs from cutlass, etc.
+      - write a detailed report to KNOWLEDGE.md, with the learnings and insights you have gained. Try to separate different concepts and parts in different sections.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+    permissions:
+      - You MUST NOT execute git commit command in any way.
+      - You may start sub-agents to help you with the task.
+      - You have access to all files in the current directory.
