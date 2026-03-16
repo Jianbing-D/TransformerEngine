@@ -12,7 +12,7 @@ Use first-principles thinking. You should not always assume that I clearly know 
     - Core concepts: How the library / tool manages state or data flow.
     - Critical Specificaties: Any non-obvious behaviors, limitations, or "gotchas".
     - Reference Patterns: Boilerplate or patterns that will be reused in this project.
-4. *Technical Design (PLAN-TASK.md)*: Create a formal design document titled *PLAN-<TASK_NAME>.md* including:
+4. *Technical Design*: Create a formal design document titled *PLAN-<TASK_NAME>*, put it in the [PROGRESS](./PROGRESS.md), including:
   + Architecture: Solution description and file paths to be modified.
   + Implementation: Detailed code snippets and logic flow.
   + Trade-offs: Analysis of chosen v.s. discarded approaches.

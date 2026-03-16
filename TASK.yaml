@@ -4,7 +4,7 @@ StatusDescription: "When a task is complete, the status field would be 'complete
 Tasks:
   - id: 1
     name: "Understand the Linear-Cross-Entropy fusion code structure in TransformerEngine"
-    status: "not started"
+    status: "completed"
     material:
       - ./tests/pytorch/test_linear_cross_entropy.py contains the test code for Linear-Cross-Entropy fusion in TransformerEngine.
       - ./3rdparty/cutlass/ contains the critical components for Linear-Cross-Entropy fusion in TransformerEngine, cutlass and cuteDSL.
