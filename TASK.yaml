@@ -17,3 +17,20 @@ Tasks:
       - You MUST NOT execute git commit command in any way.
       - You may start sub-agents to help you with the task.
       - You have access to all files in the current directory.
+  - id: 2
+    name: "Use static tile scheduler in fwd_mainloop.py"
+    status: "completed"
+    material:
+      - ./transformer_engine/common/cutedsl/linear_cross_entropy/blackwell/fwd_mainloop.py contains the forward mainloop kernel implementation.
+      - ./transformer_engine/common/cutedsl/linear_cross_entropy/scheduler.py contains the static tile scheduler implementation.
+      - ./Makefile contains the test command for the kernel.
+    steps:
+      - read the materials in depth, understand how the kernel works with the current tile indices.
+      - apply the static tile scheduler to the kernel, make the kernel run in a persistent way.
+      - write a detailed report to KNOWLEDGE.md about the static tile scheduler and how it works.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - when you updated code, use make unit-test-1gpu to make sure the kernel works correctly.
+    permissions:
+      - You MUST NOT execute git commit command in any way.
+      - You may start sub-agents to help you with the task.
+      - You have access to all files in the current directory.

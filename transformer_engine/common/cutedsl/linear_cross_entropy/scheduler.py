@@ -14,7 +14,7 @@ except ImportError:
 
 class WorkTileInfo(cutlass.utils.WorkTileInfo):
     """
-    It includes block, head, batch, and is_valid_tile
+    It includes m_block_idx, n_block_idx, and is_valid_tile
     """
     @override
     def __new_from_mlir_values__(self, values: list[ir.Value]) -> "WorkTileInfo":
