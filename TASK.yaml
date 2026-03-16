@@ -34,3 +34,14 @@ Tasks:
       - You MUST NOT execute git commit command in any way.
       - You may start sub-agents to help you with the task.
       - You have access to all files in the current directory.
+  - id: 3
+    name: "Brain storm better implementation for linear-cross-entropy fusion"
+    status: "not started"
+    steps:
+      - analyze the linear-cross-entropy fusion algorithm with mathmetical analysis.
+      - based on your understanding of the linear-cross-entropy fusion problem, brain storm better implementation for the problem.
+      - current implementation is trying to hit a balance between performance and memory usage.
+      - You must take data types into account, as it will affect the calculation precision. 
+      - then consider different ways to implement it, mapping those concepts with cuteDSL APIs.
+      - write a detailed report to KNOWLEDGE.md about the different implementations and their trade-offs.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
