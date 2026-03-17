@@ -550,8 +550,6 @@ class BwdPartialDlogits:
                 )
 
                 for n_subtile in cutlass.range(num_n_subtiles):
-                    store_c_pipeline.producer_acquire(store_c_producer_state)
-
                     # T2R: load accumulator from TMEM to registers
                     cute.copy(
                         tiled_copy_t2r,
@@ -582,6 +580,7 @@ class BwdPartialDlogits:
                     acc_vec = tiled_copy_r2s.retile(tTMEM_load_rAcc).load()
                     acc_vec = acc_vec.to(mDlogits_partial.element_type)
                     tRS_rC.store(acc_vec)
+                    store_c_pipeline.producer_acquire(store_c_producer_state)
                     cute.copy(
                         tiled_copy_r2s,
                         tRS_rC,
