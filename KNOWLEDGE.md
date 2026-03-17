@@ -462,9 +462,9 @@ $$\frac{\partial \mathrm{NLL}_t}{\partial z_{t,v}} = \mathrm{softmax}(z_t)_v - \
 
 $$\frac{\partial L}{\partial z_{t,v}} = \frac{\partial L}{\partial \mathrm{NLL}_t} \cdot \Bigl(\exp(z_{t,v} - \mathrm{LSE}_t) - \mathbf{1}_{[v = y_t]}\Bigr)$$
 
-$$\frac{\partial L}{\partial h_t} = \sum_v \frac{\partial L}{\partial z_{t,v}} \cdot W_v \qquad \text{(d\_hidden, shape } T \times D \text{)}$$
+$$\frac{\partial L}{\partial h_t} = \sum_v \frac{\partial L}{\partial z_{t,v}} \cdot W_v \qquad (d_{\text{hidden}},\ \text{shape}\ T \times D)$$
 
-$$\frac{\partial L}{\partial W_v} = \sum_t \frac{\partial L}{\partial z_{t,v}} \cdot h_t \qquad \text{(d\_weight, shape } V \times D \text{)}$$
+$$\frac{\partial L}{\partial W_v} = \sum_t \frac{\partial L}{\partial z_{t,v}} \cdot h_t \qquad (d_{\text{weight}},\ \text{shape}\ V \times D)$$
 
 **Key property**: $\partial L / \partial z_{t,v}$ depends on $z_{t,v}$ (the logits), which were not saved. They must be recomputed from $\mathbf{h}$ and $\mathbf{W}$. This is the source of the 3× backward FLOPs vs forward.
 
@@ -476,8 +476,8 @@ $$\frac{\partial L}{\partial W_v} = \sum_t \frac{\partial L}{\partial z_{t,v}} \
 | Operation | FLOPs | Bandwidth |
 |-----------|-------|-----------|
 | GEMM (h @ W.T) | 2×4096×129280×7168 = **7.6 TFLOPs** | W: 1.85 GB, h: 58 MB |
-| Online softmax (in TMEM→reg) | negligible | _max write: 672 KB, _accu write: 672 KB |
-| Triton epilogue (reduce splits) | negligible | _max+_accu read: 1.3 MB |
+| Online softmax (in TMEM→reg) | negligible | `_max` write: 672 KB, `_accu` write: 672 KB |
+| Triton epilogue (reduce splits) | negligible | `_max`+`_accu` read: 1.3 MB |
 | **Total** | **7.6 TFLOPs** | **~1.92 GB** |
 
 At GB200 throughput: 7.6 TFLOPs / 2000 TFLOPs/s = **3.8 ms** compute-bound lower bound.
@@ -488,9 +488,9 @@ Observed: **6.12 ms** → ~62% SM efficiency.
 #### Backward — current `kDlogitsSplitN` (per split, repeated 42×)
 | Operation | FLOPs | Bandwidth |
 |-----------|-------|-----------|
-| BwdPartialDlogits (recompute logits) | 2×4096×3072×7168 = 0.18 TFLOPs | h: 58 MB, W_s: 44 MB, _d_logits write: 25 MB |
-| cuBLAS addmm (d_h += d_logits @ W_s) | 2×4096×7168×3072 = 0.18 TFLOPs | _d_logits read: 25 MB, W_s: 44 MB, d_h read+write: 117 MB |
-| torch.matmul (d_W_s = d_logits.T @ h) | 2×3072×7168×4096 = 0.18 TFLOPs | _d_logits read: 25 MB, h: 58 MB, d_W_s write: 44 MB |
+| BwdPartialDlogits (recompute logits) | 2×4096×3072×7168 = 0.18 TFLOPs | h: 58 MB, W_s: 44 MB, `_d_logits` write: 25 MB |
+| cuBLAS addmm (d_h += d_logits @ W_s) | 2×4096×7168×3072 = 0.18 TFLOPs | `_d_logits` read: 25 MB, W_s: 44 MB, d_h read+write: 117 MB |
+| torch.matmul (d_W_s = d_logits.T @ h) | 2×3072×7168×4096 = 0.18 TFLOPs | `_d_logits` read: 25 MB, h: 58 MB, d_W_s write: 44 MB |
 | **Per-split total** | **0.54 TFLOPs** | **~440 MB** |
 | **42 splits total** | **22.7 TFLOPs = 3× fwd** | **~18.5 GB** |
 
@@ -505,7 +505,7 @@ Observed: **17.76 ms** → ~64% SM efficiency.
 
 The backward requires $\exp(z_{t,v} - \mathrm{LSE}_t)$ for every $(t, v)$, which requires $z_{t,v}$. Since $z_{t,v} = \mathbf{h}_t \cdot \mathbf{W}_v^\top$ was not saved, the full GEMM must be re-run at the same cost as the forward. Then:
 
-$$\underbrace{\mathbf{z} = \mathbf{h}\mathbf{W}^\top}_{\text{recompute, } 1\times \text{fwd}} \qquad \underbrace{\frac{\partial L}{\partial \mathbf{h}} = \frac{\partial L}{\partial \mathbf{z}} \cdot \mathbf{W}}_{\text{d\_hidden, } 1\times \text{fwd}} \qquad \underbrace{\frac{\partial L}{\partial \mathbf{W}} = \left(\frac{\partial L}{\partial \mathbf{z}}\right)^\top \mathbf{h}}_{\text{d\_weight, } 1\times \text{fwd}}$$
+$$\underbrace{\mathbf{z} = \mathbf{h}\mathbf{W}^\top}_{\text{recompute, } 1\times \text{fwd}} \qquad \underbrace{\frac{\partial L}{\partial \mathbf{h}} = \frac{\partial L}{\partial \mathbf{z}} \cdot \mathbf{W}}_{\text{d-hidden, } 1\times \text{fwd}} \qquad \underbrace{\frac{\partial L}{\partial \mathbf{W}} = \left(\frac{\partial L}{\partial \mathbf{z}}\right)^\top \mathbf{h}}_{\text{d-weight, } 1\times \text{fwd}}$$
 
 Total backward FLOPs $= 3 \times$ forward. This is a **hard lower bound** when logits are not stored.
 
