@@ -89,3 +89,14 @@ Tasks:
       - You may start sub-agents to help you with the task.
       - You have access to all files in the current directory.
       - When you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+  - id: 6
+    name: "Make sure the static scheduler issues the number of SMs at max"
+    status: "completed"
+    description:
+      - currently, the schedule would launch 2 * SM grid for a kernel, which is not the intention.
+    steps:
+      - read the materials in depth, understand how the static scheduler works.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+      - When you verified the correctness of the kernel, use `make ncu-bwd-cli` to profile the kernel performance.
+      - the lower the Duration, the better the performance.

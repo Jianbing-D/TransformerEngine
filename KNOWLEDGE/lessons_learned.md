@@ -155,3 +155,10 @@ When profiling 2-CTA kernels with NCU, the grid size doubles (`grid = tiles * cl
 
 ### L13: partition_C with 2-CTA Already Accounts for CTA Rank
 `thr_mma = tiled_mma.get_slice(mma_tile_coord_v)` creates a CTA-specific view. `thr_mma.partition_C(mC)` produces tiles indexed by the scheduler's M tile index (`pidm`), not the global CTA-aware index (`pidm * cluster_m_size + mma_tile_coord_v`). Using `pidm_cta` to index `bSG_gC_all` causes out-of-bounds access when `pidm >= num_m_tiles / cluster_m_size`. The global M offset is already baked into the partition via `mma_tile_coord_v`. **Rule**: index TMA-partitioned GMEM tensors derived from `partition_C` with `pidm`, not `pidm_cta`. Use `pidm_cta` only for raw GMEM tensors (labels, accu) that are indexed by flat token position.
+
+---
+
+## Task-6 Scheduler Fix
+
+### L14: Persistent Scheduler Must Account for Cluster Size in Grid Calculation
+`get_grid_shape` computes `vacancies = sm_count * occupancy` as the max concurrent CTAs. With clusters of size K, each cluster occupies K SMs. The correct formula is `vacancies = (sm_count // cluster_m_size) * occupancy` — the number of clusters that fit, not the number of CTAs. Without this, the grid is K× too large, causing K waves instead of 1. On B200 (152 SMs) with cluster_size=2: grid went from 304→152 CTAs (152→76 clusters), duration from 154.62→136.86 μs (11.5% speedup).

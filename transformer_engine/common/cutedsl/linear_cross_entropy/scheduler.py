@@ -112,7 +112,7 @@ class StaticPersistentScheduler:
         if sm_count is None:
             hardware_info = cutlass.utils.HardwareInfo()
             sm_count = hardware_info.get_device_multiprocessor_count()
-        vacancies = sm_count * occupancy
+        vacancies = (sm_count // cluster_m_size) * occupancy
         return (cutlass.min(vacancies, params.total_blocks) * cluster_m_size, Int32(1), Int32(1))
 
     def get_current_work(self, *, loc=None, ip=None) -> WorkTileInfo:
