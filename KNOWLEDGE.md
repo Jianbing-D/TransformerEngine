@@ -14,7 +14,7 @@ This file is the **index**. All detailed content lives in `KNOWLEDGE/`.
 | [KNOWLEDGE/kernel_architecture.md](KNOWLEDGE/kernel_architecture.md) | SM100 CTA layouts, pipeline stages, TMEM/TMA usage, JIT patterns, `StaticPersistentScheduler` |
 | [KNOWLEDGE/distributed.md](KNOWLEDGE/distributed.md) | TP/SP semantics, `ignore_index` mechanic, two-stream TP forward |
 | [KNOWLEDGE/utilities_and_tests.md](KNOWLEDGE/utilities_and_tests.md) | `ptx.py`, `utils.py` enums, test problem sizes, correctness tolerances |
-| [KNOWLEDGE/lessons_learned.md](KNOWLEDGE/lessons_learned.md) | L1–L11 lessons, Task-2 persistent scheduler insights, CuteDSL scoping rules, Task-4 optimization results (persistent scheduler overhead, TMA S2G register savings, 2-CTA pipeline sizing, mma_tiler scaling) |
+| [KNOWLEDGE/lessons_learned.md](KNOWLEDGE/lessons_learned.md) | L1–L13 lessons, Task-2 persistent scheduler insights, CuteDSL scoping rules, Task-4 optimization results, Task-5 bug fixes (PipelineAsync phase semantics, partition_C 2-CTA indexing) |
 | [KNOWLEDGE/task3_analysis.md](KNOWLEDGE/task3_analysis.md) | FLOP/bandwidth accounting, improvement options analysis, precision analysis, priority ranking |
 | [KNOWLEDGE/cutlass_gemm_examples.md](KNOWLEDGE/cutlass_gemm_examples.md) | CUTLASS Blackwell GEMM optimization techniques: persistent scheduler, TMA S2G store (R2S→fence→barrier→S2G pattern, `tma_partition` gotchas), 2-CTA MMA (full API reference: CTA rank, leader gating, `cluster_layout_vmnk`, pipeline `cta_layout_vmnk`, `tx_count` doubling, multicast masks, scheduler cluster awareness, TMEM sharing) |
 

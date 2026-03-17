@@ -1,5 +1,30 @@
 # Progress
 
+## Task-5: Fix Bugs in bwd_partial_dlogits.py
+**Status: Completed**
+
+### PLAN-Task5: Fix Store Warp Bugs
+
+#### Bugs Identified & Fixed
+1. **PipelineAsync producer phase (DEADLOCK)**: Manual `PipelineState(num_write_stage, 0, 0, 0)` used phase=0 for the store_c producer. PipelineAsync's `producer_acquire` calls `sync_object_empty.wait(state.index, state.phase)` which uses `mbarrier.try_wait.parity` — waits until `current_phase != phase`. Empty barriers start at phase=0. With phase=0, producer blocks forever (0 != 0 is false). Fix: use `make_pipeline_state(PipelineUserType.Producer, ...)` which sets phase=1.
+2. **bSG_gC_all M index out of bounds (DATA CORRUPTION)**: Store warp indexed `bSG_gC_all[(None, pidm_cta, n_subtile_global)]` where `pidm_cta = pidm * cluster_m_size + mma_tile_coord_v`. But `bSG_gC_all` is derived from `thr_mma.partition_C(mC)` which already accounts for the 2-CTA split via `mma_tile_coord_v`. The M dimension has `num_m_tiles` entries (not `num_m_tiles * cluster_m_size`). Fix: use `pidm` instead of `pidm_cta`.
+3. **Scope violation (from prior session)**: `bSG_sC_tma`, `bSG_gC_all` defined in epi warp block not visible in store warp block. Fix: moved C TMA partition to shared scope before warp blocks.
+4. **num_c_stage mismatch (from prior session)**: `num_c_stage=1` but `num_write_stage=2`. Fix: changed to `num_c_stage=2`.
+5. **Per-subtile pipeline (from prior session)**: Epi warp producer_acquire/commit moved inside subtile loop; store warp given per-subtile consume loop.
+
+#### TODO-list
+- [x] Identify all bugs
+- [x] Change `num_c_stage` from 1 to 2
+- [x] Move C TMA partition to shared scope
+- [x] Fix epi warp: per-subtile producer cycle
+- [x] Fix store warp: per-subtile consumer with proper addressing
+- [x] Fix PipelineAsync producer phase (deadlock)
+- [x] Fix bSG_gC_all M index (data corruption)
+- [x] Run `make unit-test-1gpu` — **75 passed, 89 skipped**
+- [x] Run `make unit-test-4gpu` — **88 passed, 76 skipped**
+
+---
+
 ## Task-4: Optimize the Backward Kernel bwd_partial_dlogits.py
 **Status: Completed**
 
@@ -124,14 +149,6 @@ Enable `use_2cta_instrs=True` to double the N-tile (256→512). Requires:
 #### Goal
 Perform a rigorous analysis of the LCE forward/backward algorithm, quantify current bottlenecks using arithmetic-intensity reasoning, and enumerate concrete improvements with their trade-offs.
 
-#### Approach
-1. Derive FLOP and bandwidth counts for the reference configuration (DeepSeek: T=4096, V=129280, D=7168, BF16)
-2. Classify each bottleneck (compute-bound vs. bandwidth-bound)
-3. Enumerate alternative forward strategies
-4. Enumerate alternative backward strategies
-5. Analyze data-type precision trade-offs
-6. Document all findings in KNOWLEDGE.md Section 15
-
 #### TODO-list
 - [x] Read and understand `linear_cross_entropy_entry.py` (full forward + backward)
 - [x] Read and understand `bwd_partial_dlogits.py` (current backward kernel)
@@ -150,58 +167,12 @@ Perform a rigorous analysis of the LCE forward/backward algorithm, quantify curr
 ## Task-2: Use Static Tile Scheduler in fwd_mainloop.py
 **Status: Completed**
 
-### PLAN-Task2: Persistent Scheduler for FwdMainLoop
-
-#### Problem
-Current `FwdMainLoop` kernel uses a static grid `(ceil_div(num_tokens, 128), num_splits, 1)` — one CTA per `(m_tile, n_tile)` pair. This means the kernel may launch more CTAs than there are SMs, causing wave quantization overhead. A persistent scheduler caps the grid to SM count and has each CTA loop over multiple tiles.
-
-#### Architecture
-- **Scheduler**: `StaticPersistentScheduler` in `scheduler.py`
-  - Grid = `min(SM_count × occupancy, total_tiles)`, 1D
-  - Linearization: `tile_idx = m_idx * num_splits + n_idx`
-  - `m_idx = tile_idx // num_splits` → `pidm`
-  - `n_idx = tile_idx % num_splits` → `pidn`
-  - Per-CTA: loop `while tile_idx < total_blocks`, advance by `grid_dim.x`
-- **Key constraint**: `FastDivmodDivisor(num_splits)` requires `num_splits` to be compile-time static (it is — derived from static `vocab_size`). `num_m_tiles` is dynamic (varies with `num_tokens`).
-
-#### What Changes in `fwd_mainloop.py`
-1. **Imports**: Add `partial` from functools, add `tile_scheduler` import
-2. **`_compute_grid`**: Use `StaticPersistentScheduler.get_grid_shape()` instead of naïve grid
-3. **`__call__`**: Pass `sched_params` to kernel
-4. **`kernel`**:
-   - Remove `pidm, pidn = block_idx()`
-   - Hoist TMEM alloc before while loop (allocate once, reuse across tiles)
-   - Hoist warpgroup_reg_alloc/dealloc before while loop
-   - Hoist epilogue fixed setup (copy atoms, TMEM load layouts) before while loop
-   - Add persistent `while work_tile.is_valid_tile:` loop
-   - Inside loop: extract `pidm, pidn` from scheduler, recompute GMEM partitions & TMA partitions
-   - Move TMEM dealloc after while loop
-
-#### What Stays Fixed Across Tiles (can be hoisted)
-- SMEM layouts, `sA`, `sB`
-- `thr_mma`, `tCsA`, `tCsB`
-- `tCtC` (TMEM tensor layout)
-- Copy atoms (t2r, g2r, r2g) and tiled copies
-- `tTMEM_load_tAcc`, `tTMEM_load_cAcc_shape`, `cAcc`, `tCcAcc_epi`
-- Pipeline objects and initial states
-
-#### What Changes Per Tile (inside while loop)
-- `pidm, pidn` from scheduler
-- `block_vocab_left/right_idx`, `num_n_tiles`
-- `gA`, `gB`, `tCgA`, `tCgB`, `tTMAsA/B`, `tTMAgA/B`
-- Epilogue GMEM slices (`gLabels`, `gMax`, `gAccu`, `gLogprobs`)
-- Epilogue register fragments (`tR2GrMax.fill(-1e30)`, etc.) — reset each tile
-- `tLabelsrLabels`, `valid_mask`
-
 #### TODO-list
 - [x] Read and understand current fwd_mainloop kernel structure
 - [x] Read and understand StaticPersistentScheduler API
 - [x] Write plan to PROGRESS.md
-- [x] Add scheduler import and `partial` to fwd_mainloop.py
-- [x] Modify `_compute_grid` to use StaticPersistentScheduler
-- [x] Modify `__call__` to pass sched_params to kernel
-- [x] Modify `kernel` to use persistent while loop
-- [x] Run `make unit-test-1gpu` to verify correctness — 75 passed, 89 skipped
+- [x] Implement persistent scheduler in fwd_mainloop.py
+- [x] Run `make unit-test-1gpu` — 75 passed, 89 skipped
 - [x] Update KNOWLEDGE.md with scheduler insights
 - [x] Mark task-2 completed in TASK.yaml
 
@@ -209,24 +180,6 @@ Current `FwdMainLoop` kernel uses a static grid `(ceil_div(num_tokens, 128), num
 
 ## Task-1: Understand Linear-Cross-Entropy Fusion Code Structure
 **Status: Completed**
-
-### PLAN-Task1: Code Exploration & Documentation
-
-#### Architecture Overview
-Study and document the complete code structure of the Linear-Cross-Entropy (LCE) fusion kernel in TransformerEngine, focusing on tensor shapes, data types, and algorithm flow.
-
-#### Files to Examine
-1. `tests/pytorch/test_linear_cross_entropy.py` — test usage and problem sizes
-2. `transformer_engine/pytorch/linear_cross_entropy.py` — public API + autograd Function
-3. `transformer_engine/pytorch/cutedsl/linear_cross_entropy_entry.py` — host-side forward/backward orchestration
-4. `transformer_engine/common/cutedsl/linear_cross_entropy/` — kernel implementations
-   - `blackwell/fwd_mainloop.py` — SM100 forward GEMM + softmax epilogue
-   - `blackwell/bwd_partial_dlogits.py` — SM100 backward d_logits kernel
-   - `blackwell/bwd_dHdW.py` — SM100 fused d_hidden + d_weight kernel (WIP)
-   - `utils.py` — enums
-   - `scheduler.py` — persistent tile scheduler
-   - `ptx.py` — inline PTX helpers
-5. `transformer_engine/common/triton/linear_cross_entropy.py` — Triton epilogue kernels
 
 #### TODO-list
 - [x] Read and understand the public API layer

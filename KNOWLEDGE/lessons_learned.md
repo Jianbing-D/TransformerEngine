@@ -145,3 +145,13 @@ With `use_2cta_instrs=True`, `cta_tile_shape_mnk[0] = mma_tiler_M // atom_thr_si
 
 ### L11: NCU Profiling with Clusters
 When profiling 2-CTA kernels with NCU, the grid size doubles (`grid = tiles * cluster_m_size`). The `--launch-skip` count in the Makefile target must be recalibrated. Key NCU metrics for 2-CTA: look at "Cluster Size", "Cluster Scheduling Policy" (should be "PolicySpread"), and "Max Active Clusters" to understand SM utilization.
+
+---
+
+## Task-5 Bug Fix Insights
+
+### L12: PipelineAsync Producer Phase Must Be 1 (Not 0)
+`PipelineAsync.producer_acquire` calls `sync_object_empty.wait(state.index, state.phase)` which issues `mbarrier.try_wait.parity(bar, phase)`. The PTX semantics are: wait until `current_phase != phase`. Empty barriers start at phase=0. With `make_pipeline_state(Producer, ...)`, phase=1, so `0 != 1` is true → producer proceeds immediately. Manual `PipelineState(..., phase=0)` causes `0 != 0` = false → **deadlock**. Always use `make_pipeline_state` instead of manual `PipelineState` construction.
+
+### L13: partition_C with 2-CTA Already Accounts for CTA Rank
+`thr_mma = tiled_mma.get_slice(mma_tile_coord_v)` creates a CTA-specific view. `thr_mma.partition_C(mC)` produces tiles indexed by the scheduler's M tile index (`pidm`), not the global CTA-aware index (`pidm * cluster_m_size + mma_tile_coord_v`). Using `pidm_cta` to index `bSG_gC_all` causes out-of-bounds access when `pidm >= num_m_tiles / cluster_m_size`. The global M offset is already baked into the partition via `mma_tile_coord_v`. **Rule**: index TMA-partitioned GMEM tensors derived from `partition_C` with `pidm`, not `pidm_cta`. Use `pidm_cta` only for raw GMEM tensors (labels, accu) that are indexed by flat token position.

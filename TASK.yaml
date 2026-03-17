@@ -75,3 +75,17 @@ Tasks:
       - When you verified the correctness of the kernel, use `make ncu-bwd-cli` to profile the kernel performance.
       - `bwd_partial_dlogits.log` is the profile log of the kernel, you can use it to analyze the kernel performance.
       - Generally speaking, the lower the Duration, the better the performance.
+  - id: 5
+    name: "Fix bugs in bwd_partial_dlogits.py"
+    status: "completed"
+    steps:
+      - do this task in an iterative way, unit-test-1gpu -> locate errors -> fix errors -> unit-test-1gpu -> ...
+      - the warp-specialization structure is basically correct right now. You have have to make the c tensor partitioned correctly. 
+      - use mbarriers for synchronization between epi warps and store warp.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+    permission:
+      - DON'T look for cutlass reference implementation. Just fix bugs.
+      - YOU MUST NOT execute git commit command in any way.
+      - You may start sub-agents to help you with the task.
+      - You have access to all files in the current directory.
+      - When you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.

@@ -62,10 +62,11 @@ class BwdPartialDlogits:
         self.epi_warp_ids = (0, 1, 2, 3)
         self.load_warp_ids = 4
         self.mma_warp_ids = 5
-        self.empty_warp_ids = (6, 7)
+        self.store_warp_ids = 6
+        self.empty_warp_ids = (7,)
 
         self.threads_per_cta: int = self.threads_per_warp * len(
-            (*self.epi_warp_ids, self.load_warp_ids, self.mma_warp_ids, *self.empty_warp_ids)
+            (*self.epi_warp_ids, self.load_warp_ids, self.mma_warp_ids, self.store_warp_ids, *self.empty_warp_ids)
         )
         self.cta_sync_barrier = pipeline.NamedBarrier(
             barrier_id=1, num_threads=self.threads_per_cta
@@ -74,7 +75,6 @@ class BwdPartialDlogits:
         self.buffer_align_bytes: int = 1024
         self.num_regs_other: int = 32
         self.num_regs_epi: int = 192
-        self.num_c_stage: int = 1
         self.epilog_sync_bar_id: int = 2
 
     def _compute_grid(
@@ -102,10 +102,11 @@ class BwdPartialDlogits:
         a_dtype: Type[cutlass.Numeric],
         b_dtype: Type[cutlass.Numeric],
     ):
-        num_acc_stage = 1
+        num_acc_stage = 2
         num_ab_stage = 4
         num_epi_stage_per_tile = 4
-        return num_acc_stage, num_ab_stage, num_epi_stage_per_tile
+        num_write_stage = 3
+        return num_acc_stage, num_ab_stage, num_epi_stage_per_tile, num_write_stage
 
     def _setup_attributes(
         self,
@@ -123,11 +124,13 @@ class BwdPartialDlogits:
         mma_inst_tile_k: int = 4
         self.mma_tiler = (self.mma_tiler[0], self.mma_tiler[1], mma_inst_shape_k * mma_inst_tile_k)
 
-        self.num_acc_stage, self.num_ab_stage, self.num_epi_stage_per_tile = self._compute_stages(
+        self.num_acc_stage, self.num_ab_stage, self.num_epi_stage_per_tile, self.num_write_stage = self._compute_stages(
             tiled_mma, self.mma_tiler, a_dtype, b_dtype
         )
         self.tmem_alloc_cols = self.num_acc_stage * self.mma_tiler[1]
         assert self.tmem_alloc_cols <= SM100_TMEM_CAPACITY_COLUMNS
+        # when tmem_alloc_cols == SM100_TMEM_CAPACITY_COLUMNS, no need to allocate tmem
+        self.do_tmem_alloc: bool = self.tmem_alloc_cols < SM100_TMEM_CAPACITY_COLUMNS
 
         self.cta_tile_shape_mnk = (
             self.mma_tiler[0] // cute.size(tiled_mma.thr_id.shape),
@@ -219,13 +222,34 @@ class BwdPartialDlogits:
             pipeline.PipelineUserType.Consumer, self.num_acc_stage
         )
 
+        store_c_pipeline = pipeline.PipelineAsync.create(
+            num_stages=self.num_write_stage,
+            producer_group=make_thread_cooperative_group(
+                self.threads_per_warp * len(self.epi_warp_ids)
+            ),
+            consumer_group=make_thread_cooperative_group(
+                self.threads_per_warp * len([self.store_warp_ids])
+            ),
+            barrier_storage=storage.write_c_mbar_ptr.data_ptr(),
+        )
+        store_c_producer_state = pipeline.PipelineState(
+            self.num_write_stage,
+            cutlass.Int32(0),
+            cutlass.Int32(0),
+            cutlass.Int32(0),
+        )
+        store_c_consumer_state = pipeline.make_pipeline_state(
+            pipeline.PipelineUserType.Consumer, self.num_write_stage
+        )
+
         tmem_dealloc_mbar_ptr = storage.tmem_dealloc_mbar_ptr.data_ptr()
-        if warp_idx == self.empty_warp_ids[0]:
-            with cute.arch.elect_one():
-                cute.arch.mbarrier_init(
-                    tmem_dealloc_mbar_ptr, self.threads_per_warp * len(self.epi_warp_ids)
-                )
-                cute.arch.mbarrier_init_fence()
+        if cutlass.const_expr(self.do_tmem_alloc):
+            if warp_idx == self.empty_warp_ids[0]:
+                with cute.arch.elect_one():
+                    cute.arch.mbarrier_init(
+                        tmem_dealloc_mbar_ptr, self.threads_per_warp * len(self.epi_warp_ids)
+                    )
+                    cute.arch.mbarrier_init_fence()
 
         # Cluster barrier sync after barrier init
         pipeline.pipeline_init_arrive(cluster_shape_mn=cluster_layout_vmnk, is_relaxed=True)
@@ -267,15 +291,19 @@ class BwdPartialDlogits:
         pipeline.pipeline_init_wait(cluster_shape_mn=cluster_layout_vmnk)
 
         # ------ Allocate TMEM (once, reused across tiles) ------ #
-        tmem_holding_buf = storage.tmem_holding_buf
-        if warp_idx == self.empty_warp_ids[0]:
-            cute.arch.alloc_tmem(
-                self.tmem_alloc_cols, tmem_holding_buf, is_two_cta=self.use_2cta_instrs
+        tmem_ptr = None
+        if cutlass.const_expr(self.do_tmem_alloc):
+            tmem_holding_buf = storage.tmem_holding_buf
+            if warp_idx == self.empty_warp_ids[0]:
+                cute.arch.alloc_tmem(
+                    self.tmem_alloc_cols, tmem_holding_buf, is_two_cta=self.use_2cta_instrs
+                )
+            self.cta_sync_barrier.arrive_and_wait()
+            tmem_ptr = cute.arch.retrieve_tmem_ptr(
+                self.acc_dtype, alignment=16, ptr_to_buffer_holding_addr=tmem_holding_buf
             )
-        self.cta_sync_barrier.arrive_and_wait()
-        tmem_ptr = cute.arch.retrieve_tmem_ptr(
-            self.acc_dtype, alignment=16, ptr_to_buffer_holding_addr=tmem_holding_buf
-        )
+        else:
+            tmem_ptr = cute.make_ptr(self.acc_dtype, 0, mem_space=cute.AddressSpace.tmem, assumed_align=16)
 
         tmem_shape = (128, self.tmem_alloc_cols)
         acc_shape = thr_mma.partition_shape_C(tmem_shape)
@@ -287,6 +315,18 @@ class BwdPartialDlogits:
         TileSchedulerCls = partial(
             StaticPersistentScheduler.create, scheduler_params,
             cluster_m_size=self.cluster_m_size,
+        )
+
+        # C TMA partition for TMA S2G store (shared across warps)
+        tCgC = thr_mma.partition_C(mC)
+        tCgC_t = transform_partitioned_tensor_layout(tCgC)
+        tCgC_epi = cute.flat_divide(tCgC_t, self.epi_subtile)
+        bSG_sC_tma, bSG_gC_all = cpasync.tma_partition(
+            tma_atom_c,
+            0,
+            cute.make_layout(1),
+            cute.group_modes(sC, 0, 2),
+            cute.group_modes(tCgC_epi, 0, 2),
         )
 
         # ------ Empty ------ #
@@ -453,32 +493,6 @@ class BwdPartialDlogits:
                 sC,
             )
 
-            # TMA S2G partition for full output tensor (use TMA tensor mC)
-            tCgC = thr_mma.partition_C(mC)
-            tCgC_t = transform_partitioned_tensor_layout(tCgC)
-            tCgC_epi = cute.flat_divide(tCgC_t, self.epi_subtile)
-            bSG_sC_tma, bSG_gC_all = cpasync.tma_partition(
-                tma_atom_c,
-                0,
-                cute.make_layout(1),
-                cute.group_modes(sC, 0, 2),
-                cute.group_modes(tCgC_epi, 0, 2),
-            )
-
-            # PipelineTmaStore for S2G synchronization
-            c_pipeline = pipeline.PipelineTmaStore.create(
-                num_stages=self.num_c_stage,
-                producer_group=make_thread_cooperative_group(
-                    self.threads_per_warp * len(self.epi_warp_ids)
-                ),
-            )
-
-            # Epilogue sync barrier (R2S → S2G synchronization)
-            epilog_sync_barrier = pipeline.NamedBarrier(
-                barrier_id=self.epilog_sync_bar_id,
-                num_threads=self.threads_per_warp * len(self.epi_warp_ids),
-            )
-
             # Persistent epilogue loop
             scheduler = TileSchedulerCls()
             work_tile = scheduler.initial_work_tile_info()
@@ -534,7 +548,10 @@ class BwdPartialDlogits:
                     (block_vocab_right_idx - block_vocab_left_idx),
                     cute.size(tTMEM_load_rAcc, mode=[0]),
                 )
+
                 for n_subtile in cutlass.range(num_n_subtiles):
+                    store_c_pipeline.producer_acquire(store_c_producer_state)
+
                     # T2R: load accumulator from TMEM to registers
                     cute.copy(
                         tiled_copy_t2r,
@@ -565,29 +582,16 @@ class BwdPartialDlogits:
                     acc_vec = tiled_copy_r2s.retile(tTMEM_load_rAcc).load()
                     acc_vec = acc_vec.to(mDlogits_partial.element_type)
                     tRS_rC.store(acc_vec)
-                    c_buffer = n_subtile % self.num_c_stage
                     cute.copy(
                         tiled_copy_r2s,
                         tRS_rC,
-                        tRS_sC[(None, None, None, c_buffer)],
+                        tRS_sC[(None, None, None, store_c_producer_state.index)],
                     )
 
-                    # Fence + barrier: ensure R2S visible to TMA
+                    # Fence: ensure R2S visible to TMA
                     cute.arch.fence_proxy("async.shared", space="cta")
-                    epilog_sync_barrier.arrive_and_wait()
-
-                    # S2G: TMA store from SMEM to GMEM (warp 0 only)
-                    if warp_idx == self.epi_warp_ids[0]:
-                        n_global = pidn * self.num_epi_stage_per_tile + n_subtile
-                        bSG_gC = bSG_gC_all[(None, pidm, n_global)]
-                        cute.copy(
-                            tma_atom_c,
-                            bSG_sC_tma[(None, c_buffer)],
-                            bSG_gC,
-                        )
-                        c_pipeline.producer_commit()
-                        c_pipeline.producer_acquire()
-                    epilog_sync_barrier.arrive_and_wait()
+                    store_c_pipeline.producer_commit(store_c_producer_state)
+                    store_c_producer_state.advance()
 
                 mma_pipeline.consumer_release(mma_consumer_state)
                 mma_consumer_state.advance()
@@ -595,14 +599,56 @@ class BwdPartialDlogits:
                 scheduler.advance_to_next_work()
                 work_tile = scheduler.get_current_work()
 
-            # Wait for all TMA stores to complete before kernel exit
-            c_pipeline.producer_tail()
+        # ------ Write C (persistent) ------ #
+        if warp_idx == self.store_warp_ids:
+            cute.arch.warpgroup_reg_alloc(self.num_regs_other)
 
-        # ------ Deallocate TMEM ------ #
-        self.cta_sync_barrier.arrive_and_wait()
-        if warp_idx == self.empty_warp_ids[0]:
-            cute.arch.relinquish_tmem_alloc_permit()
-            cute.arch.dealloc_tmem(tmem_ptr, self.tmem_alloc_cols, is_two_cta=self.use_2cta_instrs)
+            scheduler = TileSchedulerCls()
+            work_tile = scheduler.initial_work_tile_info()
+            while work_tile.is_valid_tile:
+                pidm, pidn = work_tile.tile_idx
+
+                block_vocab_left_idx: cutlass.Int64 = (
+                    split_idx * self.vocab_per_split + pidn * self.epi_tile[1]
+                )
+                block_vocab_right_idx: cutlass.Int64 = min(
+                    split_idx * self.vocab_per_split + (pidn + 1) * self.epi_tile[1],
+                    min((split_idx + 1) * self.vocab_per_split, problem_mnk[1]),
+                )
+                num_n_subtiles: cutlass.Int64 = cute.ceil_div(
+                    (block_vocab_right_idx - block_vocab_left_idx),
+                    self.epi_subtile[1],
+                )
+
+                n_subtiles_per_tile: int = self.epi_tile[1] // self.epi_subtile[1]
+                for n_subtile in cutlass.range(num_n_subtiles):
+                    n_subtile_global: cutlass.Int32 = pidn * n_subtiles_per_tile + n_subtile
+
+                    cute.arch.cp_async_bulk_wait_group(self.num_write_stage - 1, read=True)
+                    store_c_pipeline.consumer_release(store_c_consumer_state)
+                    store_c_pipeline.consumer_wait(store_c_consumer_state)
+                    cute.copy(
+                        tma_atom_c,
+                        bSG_sC_tma[(None, store_c_consumer_state.index)],
+                        bSG_gC_all[(None, pidm, n_subtile_global)],
+                    )
+                    cute.arch.cp_async_bulk_commit_group()
+                    store_c_consumer_state.advance()
+
+                scheduler.advance_to_next_work()
+                work_tile = scheduler.get_current_work()
+            cute.arch.cp_async_bulk_wait_group(0, read=True)
+
+        # make sure CGA is alive
+        cute.arch.cluster_arrive_relaxed()
+        cute.arch.cluster_wait()
+
+        if cutlass.const_expr(self.do_tmem_alloc):
+            # ------ Deallocate TMEM ------ #
+            self.cta_sync_barrier.arrive_and_wait()
+            if warp_idx == self.empty_warp_ids[0]:
+                cute.arch.relinquish_tmem_alloc_permit()
+                cute.arch.dealloc_tmem(tmem_ptr, self.tmem_alloc_cols, is_two_cta=self.use_2cta_instrs)
 
     @cute.jit
     def __call__(
@@ -668,7 +714,7 @@ class BwdPartialDlogits:
         output_dtype = dlogits_partial.element_type
         output_layout = utils.LayoutEnum.from_tensor(dlogits_partial)
         c_smem_layout_staged = sm100_utils.make_smem_layout_epi(
-            output_dtype, output_layout, self.epi_subtile, self.num_c_stage
+            output_dtype, output_layout, self.epi_subtile, self.num_write_stage
         )
         c_smem_layout_one_stage = cute.slice_(c_smem_layout_staged, (None, None, 0))
         tma_atom_c, tma_tensor_c = cpasync.make_tiled_tma_atom(
@@ -726,6 +772,7 @@ class BwdPartialDlogits:
 
             load_ab_mbar_ptr: cute.struct.MemRange[cutlass.Int64, self.num_ab_stage * 2]
             mma_mbar_ptr: cute.struct.MemRange[cutlass.Int64, self.num_acc_stage * 2]
+            write_c_mbar_ptr: cute.struct.MemRange[cutlass.Int64, self.num_write_stage * 2]
 
             tmem_dealloc_mbar_ptr: cute.struct.MemRange[cutlass.Int64, 1]
             tmem_holding_buf: cutlass.Int32
