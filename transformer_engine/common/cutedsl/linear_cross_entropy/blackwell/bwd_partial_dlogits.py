@@ -3,6 +3,7 @@
 # See LICENSE for license information.
 
 from typing import Optional, Tuple, Type
+from functools import partial
 
 import cuda.bindings.driver as cuda  # type: ignore
 import cutlass
@@ -11,6 +12,14 @@ import cutlass.pipeline as pipeline  # type: ignore
 import cutlass.utils as utils  # type: ignore
 import cutlass.utils.blackwell_helpers as sm100_utils  # type: ignore
 from cutlass.cute.nvgpu import cpasync, tcgen05
+
+from cutlass.utils.gemm.sm100 import transform_partitioned_tensor_layout
+
+from transformer_engine.common.cutedsl.linear_cross_entropy.scheduler import (
+    StaticPersistentScheduler,
+    TileSchedulerParams,
+    ParamsBase,
+)
 
 SM100_TMEM_CAPACITY_COLUMNS: int = 512
 
@@ -33,8 +42,8 @@ class BwdPartialDlogits:
         self,
         reduction: int,
         acc_dtype: Type[cutlass.Numeric] = cutlass.Float32,
-        use_2cta_instrs: bool = False,
-        mma_tiler_mn: Tuple[int, int] = (128, 256),
+        use_2cta_instrs: bool = True,
+        mma_tiler_mn: Tuple[int, int] = (256, 256),
         vocab_per_split: int = 512,
     ):
         self.REDUCTION: cutlass.Constexpr[cutlass.Int32] = cutlass.const_expr(reduction)
@@ -65,6 +74,8 @@ class BwdPartialDlogits:
         self.buffer_align_bytes: int = 1024
         self.num_regs_other: int = 32
         self.num_regs_epi: int = 192
+        self.num_c_stage: int = 1
+        self.epilog_sync_bar_id: int = 2
 
     def _compute_grid(
         self,
@@ -133,6 +144,8 @@ class BwdPartialDlogits:
         mA: cute.Tensor,
         tma_atom_b: cute.CopyAtom,
         mB: cute.Tensor,
+        tma_atom_c: cute.CopyAtom,
+        mC: cute.Tensor,
         mLabels: cute.Tensor,
         mDlogprobs: cute.Tensor,
         mAccu: cute.Tensor,
@@ -141,27 +154,33 @@ class BwdPartialDlogits:
         ignore_index: cutlass.Int64,
         a_smem_layout_staged: cute.ComposedLayout,
         b_smem_layout_staged: cute.ComposedLayout,
+        c_smem_layout_staged: cute.ComposedLayout,
         cluster_layout_vmnk: cute.Layout,
         problem_mnk: Tuple[int, int, int],
         rank: cutlass.Int32,
+        scheduler_params: ParamsBase,
     ) -> None:
         """
-        The backward kernel for partial d_logits.
+        The backward kernel for partial d_logits (persistent scheduler version).
         """
         warp_idx = cute.arch.make_warp_uniform(cute.arch.warp_idx())
         tidx, _, _ = cute.arch.thread_idx()
-        bidx, bidy, _ = cute.arch.block_idx()
-        # FIXME: block swizzling applied here
-        pidm, pidn = bidx, bidy
 
-        # FIXME: if 2 CTAs, modify here
-        cta_rank_in_cluster = 0
+        # CTA rank within cluster (0 or 1 for 2-CTA mode)
+        use_2cta_instrs = cute.size(tiled_mma.thr_id.shape) == 2
+        cta_rank_in_cluster = cute.arch.make_warp_uniform(
+            cute.arch.block_idx_in_cluster()
+        )
         block_in_cluster_coord_vmnk = cluster_layout_vmnk.get_flat_coord(cta_rank_in_cluster)
+        bidx, _, _ = cute.arch.block_idx()
+        mma_tile_coord_v = bidx % cute.size(tiled_mma.thr_id.shape)
+        is_leader_cta = mma_tile_coord_v == 0
 
         # prefetch tma descriptors
         if warp_idx == self.load_warp_ids:
             cute.nvgpu.cpasync.prefetch_descriptor(tma_atom_a)
             cute.nvgpu.cpasync.prefetch_descriptor(tma_atom_b)
+            cute.nvgpu.cpasync.prefetch_descriptor(tma_atom_c)
 
         smem = utils.SmemAllocator()
         storage = smem.allocate(self.shared_storage)
@@ -172,6 +191,8 @@ class BwdPartialDlogits:
             consumer_group=make_thread_cooperative_group(len([self.mma_warp_ids])),
             tx_count=self.tma_copy_ab_bytes,
             barrier_storage=storage.load_ab_mbar_ptr.data_ptr(),
+            cta_layout_vmnk=cluster_layout_vmnk,
+            defer_sync=True,
         )
         ab_producer_state = pipeline.make_pipeline_state(
             pipeline.PipelineUserType.Producer, self.num_ab_stage
@@ -180,13 +201,16 @@ class BwdPartialDlogits:
             pipeline.PipelineUserType.Consumer, self.num_ab_stage
         )
 
+        num_mma_consumer_threads = self.threads_per_warp * len(self.epi_warp_ids)
+        if cutlass.const_expr(self.use_2cta_instrs):
+            num_mma_consumer_threads *= 2
         mma_pipeline = pipeline.PipelineUmmaAsync.create(
             num_stages=self.num_acc_stage,
             producer_group=make_thread_cooperative_group(len([self.mma_warp_ids])),
-            consumer_group=make_thread_cooperative_group(
-                self.threads_per_warp * len(self.epi_warp_ids)
-            ),
+            consumer_group=make_thread_cooperative_group(num_mma_consumer_threads),
             barrier_storage=storage.mma_mbar_ptr.data_ptr(),
+            cta_layout_vmnk=cluster_layout_vmnk,
+            defer_sync=True,
         )
         mma_producer_state = pipeline.make_pipeline_state(
             pipeline.PipelineUserType.Producer, self.num_acc_stage
@@ -203,55 +227,46 @@ class BwdPartialDlogits:
                 )
                 cute.arch.mbarrier_init_fence()
 
-        # -------- tensor partition ------------ #
+        # Cluster barrier sync after barrier init
+        pipeline.pipeline_init_arrive(cluster_shape_mn=cluster_layout_vmnk, is_relaxed=True)
+
+        # -------- Fixed tensor partitions (tile-independent) ------------ #
         # swizzle o [(tileM, tileK), loopM, loopK, stage]
         sA = storage.sA.get_tensor(a_smem_layout_staged.outer, swizzle=a_smem_layout_staged.inner)
         # swizzle o [(tileN, tileK), loopN, loopK, stage]
         sB = storage.sB.get_tensor(b_smem_layout_staged.outer, swizzle=b_smem_layout_staged.inner)
+        # swizzle o [(subtileM, subtileN), stage]
+        sC = storage.sC.get_tensor(c_smem_layout_staged.outer, swizzle=c_smem_layout_staged.inner)
 
-        # FIXME: if 2 CTAs, modify here
-        thr_mma = tiled_mma.get_slice(0)
+        thr_mma = tiled_mma.get_slice(mma_tile_coord_v)
         # [MMA, loopM, loopK, stage]
         tCsA = thr_mma.make_fragment_A(sA)
         # [MMA, loopN, loopK, stage]
         tCsB = thr_mma.make_fragment_B(sB)
 
-        # [tileM, tileK, loopK]
-        gA = cute.local_tile(
-            mA, (self.cta_tile_shape_mnk[0], self.cta_tile_shape_mnk[2]), (pidm, None)
-        )
-        # [vocab_per_split, dim]
+        # Multicast masks for TMA loads (needed for 2-CTA barrier accounting)
+        a_mcast_mask = None
+        b_mcast_mask = None
+        if cutlass.const_expr(self.use_2cta_instrs):
+            a_mcast_mask = cpasync.create_tma_multicast_mask(
+                cluster_layout_vmnk, block_in_cluster_coord_vmnk, mcast_mode=2
+            )
+            b_mcast_mask = cpasync.create_tma_multicast_mask(
+                cluster_layout_vmnk, block_in_cluster_coord_vmnk, mcast_mode=1
+            )
+
+        # [vocab_per_split, dim] — depends on split_idx (constant per kernel call)
         mB_n = cute.local_tile(
             mB, (self.vocab_per_split, cute.size(mB.layout.shape, mode=[1])), (split_idx, 0)
         )
-        # [tileN, tileK, loopK]
-        gB = cute.local_tile(
-            mB_n, (self.cta_tile_shape_mnk[1], self.cta_tile_shape_mnk[2]), (pidn, None)
-        )
 
         a_cta_layout = cute.make_layout(cute.slice_(cluster_layout_vmnk, (0, 0, None, 0)).shape)
-        # just to make sure SMEM and GMEM tensor has the same size in the first rank
-        tCgA = thr_mma.partition_A(gA)
-        tCgB = thr_mma.partition_B(gB)
-        # [CPY, stage] & [CPY, loopK]
-        tTMAsA, tTMAgA = cpasync.tma_partition(
-            tma_atom_a,
-            block_in_cluster_coord_vmnk[2],  # cta_coord,
-            a_cta_layout,
-            cute.group_modes(sA, 0, 3),
-            cute.group_modes(tCgA, 0, 3),
-        )
         b_cta_layout = cute.make_layout(cute.slice_(cluster_layout_vmnk, (0, None, 0, 0)).shape)
-        # [CPY, stage] & [CPY, loopK]
-        tTMAsB, tTMAgB = cpasync.tma_partition(
-            tma_atom_b,
-            block_in_cluster_coord_vmnk[1],  # cta_coord
-            b_cta_layout,
-            cute.group_modes(sB, 0, 3),
-            cute.group_modes(tCgB, 0, 3),
-        )
 
-        # ------ Allocate TMEM ------ #
+        # Cluster wait before TMEM alloc
+        pipeline.pipeline_init_wait(cluster_shape_mn=cluster_layout_vmnk)
+
+        # ------ Allocate TMEM (once, reused across tiles) ------ #
         tmem_holding_buf = storage.tmem_holding_buf
         if warp_idx == self.empty_warp_ids[0]:
             cute.arch.alloc_tmem(
@@ -268,61 +283,111 @@ class BwdPartialDlogits:
         # [(tileM, tileN), loopM, loopN]
         tCtC = cute.make_tensor(tmem_ptr, tCtC_fake.layout)
 
+        # Scheduler factory (shared across warp groups)
+        TileSchedulerCls = partial(
+            StaticPersistentScheduler.create, scheduler_params,
+            cluster_m_size=self.cluster_m_size,
+        )
+
         # ------ Empty ------ #
         if warp_idx in self.empty_warp_ids:
             cute.arch.warpgroup_reg_dealloc(self.num_regs_other)
 
-        # ------ Load ------ #
+        # ------ Load (persistent) ------ #
         if warp_idx == self.load_warp_ids:
             cute.arch.warpgroup_reg_dealloc(self.num_regs_other)
 
-            for k in cutlass.range(cute.size(gA, mode=[2])):
-                ab_pipeline.producer_acquire(ab_producer_state)
-                cute.copy(
-                    tma_atom_a,
-                    tTMAgA[(None, k)],
-                    tTMAsA[(None, ab_producer_state.index)],
-                    tma_bar_ptr=ab_pipeline.producer_get_barrier(ab_producer_state),
-                )
-                cute.copy(
-                    tma_atom_b,
-                    tTMAgB[(None, k)],
-                    tTMAsB[(None, ab_producer_state.index)],
-                    tma_bar_ptr=ab_pipeline.producer_get_barrier(ab_producer_state),
-                )
-                ab_pipeline.producer_commit(ab_producer_state)
-                ab_producer_state.advance()
+            scheduler = TileSchedulerCls()
+            work_tile = scheduler.initial_work_tile_info()
+            while work_tile.is_valid_tile:
+                pidm, pidn = work_tile.tile_idx
 
-        # ------ MMA ------ #
+                # Per-tile GMEM partitions (use mma_tiler M for 2-CTA: partition_A handles split)
+                gA = cute.local_tile(
+                    mA, (self.mma_tiler[0], self.cta_tile_shape_mnk[2]), (pidm, None)
+                )
+                gB = cute.local_tile(
+                    mB_n, (self.cta_tile_shape_mnk[1], self.cta_tile_shape_mnk[2]), (pidn, None)
+                )
+                tCgA = thr_mma.partition_A(gA)
+                tCgB = thr_mma.partition_B(gB)
+                tTMAsA, tTMAgA = cpasync.tma_partition(
+                    tma_atom_a,
+                    block_in_cluster_coord_vmnk[2],
+                    a_cta_layout,
+                    cute.group_modes(sA, 0, 3),
+                    cute.group_modes(tCgA, 0, 3),
+                )
+                tTMAsB, tTMAgB = cpasync.tma_partition(
+                    tma_atom_b,
+                    block_in_cluster_coord_vmnk[1],
+                    b_cta_layout,
+                    cute.group_modes(sB, 0, 3),
+                    cute.group_modes(tCgB, 0, 3),
+                )
+
+                for k in cutlass.range(self.num_k_tiles):
+                    ab_pipeline.producer_acquire(ab_producer_state)
+                    cute.copy(
+                        tma_atom_a,
+                        tTMAgA[(None, k)],
+                        tTMAsA[(None, ab_producer_state.index)],
+                        tma_bar_ptr=ab_pipeline.producer_get_barrier(ab_producer_state),
+                        mcast_mask=a_mcast_mask,
+                    )
+                    cute.copy(
+                        tma_atom_b,
+                        tTMAgB[(None, k)],
+                        tTMAsB[(None, ab_producer_state.index)],
+                        tma_bar_ptr=ab_pipeline.producer_get_barrier(ab_producer_state),
+                        mcast_mask=b_mcast_mask,
+                    )
+                    ab_pipeline.producer_commit(ab_producer_state)
+                    ab_producer_state.advance()
+
+                scheduler.advance_to_next_work()
+                work_tile = scheduler.get_current_work()
+
+        # ------ MMA (persistent, leader CTA only) ------ #
         if warp_idx == self.mma_warp_ids:
             cute.arch.warpgroup_reg_dealloc(self.num_regs_other)
 
-            tiled_mma.set(tcgen05.Field.ACCUMULATE, False)
-            mma_pipeline.producer_acquire(mma_producer_state)
+            if is_leader_cta:
+                scheduler = TileSchedulerCls()
+                work_tile = scheduler.initial_work_tile_info()
+                while work_tile.is_valid_tile:
+                    tiled_mma.set(tcgen05.Field.ACCUMULATE, False)
+                    mma_pipeline.producer_acquire(mma_producer_state)
 
-            for k in cutlass.range(cute.size(gA, mode=[2])):
-                ab_pipeline.consumer_wait(ab_consumer_state)
+                    for k in cutlass.range(self.num_k_tiles):
+                        ab_pipeline.consumer_wait(ab_consumer_state)
 
-                for kblock_idx in cutlass.range(cute.size(tCsA, mode=[2]), unroll_full=True):
-                    cute.gemm(
-                        tiled_mma,
-                        cute.append_ones(tCtC[(None, None, mma_producer_state.index)]),
-                        tCsA[(None, None, kblock_idx, ab_consumer_state.index)],
-                        tCsB[(None, None, kblock_idx, ab_consumer_state.index)],
-                        cute.append_ones(tCtC[(None, None, mma_producer_state.index)]),
-                    )
-                    tiled_mma.set(tcgen05.Field.ACCUMULATE, True)
+                        for kblock_idx in cutlass.range(
+                            cute.size(tCsA, mode=[2]), unroll_full=True
+                        ):
+                            cute.gemm(
+                                tiled_mma,
+                                cute.append_ones(tCtC[(None, None, mma_producer_state.index)]),
+                                tCsA[(None, None, kblock_idx, ab_consumer_state.index)],
+                                tCsB[(None, None, kblock_idx, ab_consumer_state.index)],
+                                cute.append_ones(tCtC[(None, None, mma_producer_state.index)]),
+                            )
+                            tiled_mma.set(tcgen05.Field.ACCUMULATE, True)
 
-                ab_pipeline.consumer_release(ab_consumer_state)
-                ab_consumer_state.advance()
+                        ab_pipeline.consumer_release(ab_consumer_state)
+                        ab_consumer_state.advance()
 
-            mma_pipeline.producer_commit(mma_producer_state)
-            mma_producer_state.advance()
+                    mma_pipeline.producer_commit(mma_producer_state)
+                    mma_producer_state.advance()
 
-        # ------ EPI ------ #
+                    scheduler.advance_to_next_work()
+                    work_tile = scheduler.get_current_work()
+
+        # ------ EPI (persistent) ------ #
         if warp_idx in self.epi_warp_ids:
             cute.arch.warpgroup_reg_alloc(self.num_regs_epi)
 
+            # Fixed epilogue setup (tile-independent)
             copy_atom_t2r = sm100_utils.get_tmem_load_op(
                 self.cta_tile_shape_mnk,
                 utils.LayoutEnum.ROW_MAJOR,
@@ -331,7 +396,6 @@ class BwdPartialDlogits:
                 (self.epi_tile[0], self.epi_tile[1] // self.num_epi_stage_per_tile),
                 self.use_2cta_instrs,
             )
-            # [tileM, subTileN, loopM, CntSubTileN, loopN]
             tAcc_epi = cute.flat_divide(
                 tCtC[((None, None), 0, None)],
                 (self.epi_tile[0], self.epi_tile[1] // self.num_epi_stage_per_tile),
@@ -341,7 +405,6 @@ class BwdPartialDlogits:
             tTMEM_load_tAcc = thr_copy_t2r.partition_S(tAcc_epi)
             tTMEM_load_tAcc = cute.group_modes(tTMEM_load_tAcc, 3, cute.rank(tTMEM_load_tAcc) - 1)
 
-            # predicates
             cAcc = cute.make_identity_tensor(self.mma_tiler[:2])
             tCcAcc = thr_mma.partition_C(cAcc)
             tCcAcc_epi = cute.flat_divide(
@@ -352,144 +415,188 @@ class BwdPartialDlogits:
             tTMEM_load_cAcc_shape = cute.select(tTMEM_load_cAcc.shape, mode=[0, 1, 2])
             tTMEM_load_rAcc = cute.make_fragment(tTMEM_load_cAcc_shape, self.acc_dtype)
 
+            # Per-CTA identity for label/accu loading (epi_tile[0] M-rows per CTA)
+            cAcc_cta = cute.make_identity_tensor((self.epi_tile[0], self.mma_tiler[1]))
+
             copy_atom_g2r_int64 = cute.make_copy_atom(
                 cute.nvgpu.CopyUniversalOp(), mLabels.element_type
             )
             copy_atom_g2r_fp32 = cute.make_copy_atom(
                 cute.nvgpu.CopyUniversalOp(), mDlogprobs.element_type
             )
-            epilogue_thread_layout = cute.make_layout((128, 1), stride=(1, 1))
+            epilogue_thread_layout = cute.make_layout(
+                (self.epi_tile[0], 1), stride=(1, 1)
+            )
             tiled_copy_g2r_int64 = cute.make_tiled_copy_tv(
                 copy_atom_g2r_int64, epilogue_thread_layout, cute.make_layout((1, 1))
             )
             tiled_copy_g2r_fp32 = cute.make_tiled_copy_tv(
                 copy_atom_g2r_fp32, epilogue_thread_layout, cute.make_layout((1, 1))
             )
-            thr_copy_g2r_int64 = tiled_copy_g2r_int64.get_slice(tidx)
-            thr_copy_g2r_fp32 = tiled_copy_g2r_fp32.get_slice(tidx)
+            # Clamp thread index for g2r copies: for 2-CTA, only epi_tile[0] threads
+            # participate in label/accu loading; excess threads map to last valid slot
+            g2r_tidx = cutlass.min(tidx, cutlass.Int32(self.epi_tile[0] - 1))
+            thr_copy_g2r_int64 = tiled_copy_g2r_int64.get_slice(g2r_tidx)
+            thr_copy_g2r_fp32 = tiled_copy_g2r_fp32.get_slice(g2r_tidx)
 
-            # [tileM]
-            gLabels = cute.local_tile(mLabels, (self.epi_tile[0],), (pidm,))
-            gAccu = cute.local_tile(mAccu, (self.epi_tile[0],), (pidm,))
+            tMCAcc = thr_copy_g2r_int64.partition_S(cAcc_cta)[(None, None, 0)]
 
-            # slice along M direction
-            tMCAcc = thr_copy_g2r_int64.partition_S(cAcc)[(None, None, 0)]
-            # [(1, 1), 1]
-            tMCAcc_mask = cute.make_fragment(tMCAcc.shape, cutlass.Boolean)
-            # to align shape with gMax and gAccu
-            tMCAcc_mask = cute.append_ones(tMCAcc_mask)
-            tMCAcc_mask[0] = cute.elem_less(pidm * self.epi_tile[0] + tidx, cute.size(mA, mode=[0]))
-            # [(1, 1), 1, 1]
-            tMgLabels = thr_copy_g2r_int64.partition_S(cute.append_ones(gLabels))
-            tMrLabels = cute.make_fragment(tMgLabels.shape, tMgLabels.element_type)
-            cute.copy(tiled_copy_g2r_int64, tMgLabels, tMrLabels, pred=tMCAcc_mask)
-            tMgAccu = thr_copy_g2r_fp32.partition_S(cute.append_ones(gAccu))
-            tMrAccu = cute.make_fragment(tMgAccu.layout, tMgAccu.element_type)
-            cute.copy(tiled_copy_g2r_fp32, tMgAccu, tMrAccu, pred=tMCAcc_mask)
-
-            tMrDlogprobs = cute.make_fragment(tMgAccu.layout, mDlogprobs.element_type)
-            if cutlass.const_expr(self.REDUCTION == 2):
-                # mean reduction
-                num_valid_tokens = cute.make_tensor(scalarNumValidTokens, layout=(1,))
-                tMrDlogprobs[0] = mDlogprobs[0] / num_valid_tokens[0].to(cutlass.Float32)
-            elif cutlass.const_expr(self.REDUCTION == 1):
-                # sum reduction
-                tMrDlogprobs[0] = mDlogprobs[0]
-            else:
-                # no reduction
-                gDlogprobs = cute.local_tile(mDlogprobs, (self.epi_tile[0],), (pidm,))
-                tMgDlogprobs = thr_copy_g2r_fp32.partition_S(cute.append_ones(gDlogprobs))
-                cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs, tMrDlogprobs, pred=tMCAcc_mask)
-
-            
-            # NOTE: accumuate has already been converted to LSE
-            tMrDlogprobs[0] *= tMrLabels[0] != ignore_index
-
-            # ------ Partial output ------ #
-            # [tileM, tileN]
-            gDlogits_partial = cute.local_tile(
-                mDlogits_partial, (self.epi_tile[0], self.epi_tile[1]), (pidm, pidn)
+            # R2S copy setup for TMA store
+            tTR_rC = cute.make_rmem_tensor(tTMEM_load_rAcc.shape, mDlogits_partial.element_type)
+            tiled_copy_r2s, tRS_rC, tRS_sC = utils.epilog_smem_copy_and_partition(
+                utils.LayoutEnum.from_tensor(mDlogits_partial),
+                mDlogits_partial.element_type,
+                self.acc_dtype,
+                tiled_copy_t2r,
+                tTR_rC,
+                tidx,
+                sC,
             )
-            # blackwell supports STG.256
-            copy_atom_r2g = cute.make_copy_atom(
-                cute.nvgpu.CopyUniversalOp(), gDlogits_partial.element_type, num_bits_per_copy=256
-            )
-            tiled_copy_r2g = cute.make_tiled_copy_tv(
-                copy_atom_r2g, epilogue_thread_layout, copy_atom_r2g.layout_dst_tv
-            )
-            thr_copy_r2g = tiled_copy_r2g.get_slice(tidx)
 
-            # [CPY, loopM, loopN]
-            tR2GCAcc = thr_copy_r2g.partition_S(cAcc)
-            tR2GCAcc_pred = cute.make_fragment(tR2GCAcc.shape, cutlass.Boolean)
-            for elem in cutlass.range(cute.size(tR2GCAcc_pred, mode=[0])):
-                for row in cutlass.range(cute.size(tR2GCAcc_pred, mode=[1])):
-                    for col in cutlass.range(cute.size(tR2GCAcc_pred, mode=[2])):
-                        tR2GCAcc_pred[elem, row, col] = cute.elem_less(
-                            pidm * self.epi_tile[0] + tR2GCAcc[elem, row, col][0], problem_mnk[0]
-                        ) and cute.elem_less(
-                            split_idx * self.vocab_per_split
-                            + pidn * self.epi_tile[1]
-                            + tR2GCAcc[elem, row, col][1],
-                            problem_mnk[1],
-                        )
-
-            tR2GgDlogits = thr_copy_r2g.partition_D(gDlogits_partial)
-
-            # for type conversion
-            dLogits_half = cute.make_fragment(tTMEM_load_rAcc.shape, tR2GgDlogits.element_type)
-            dLogits_half = cute.tiled_divide(dLogits_half, (cute.size(tR2GgDlogits, mode=[0]), 1))
-            dLogits_half = cute.group_modes(dLogits_half, 2, cute.rank(dLogits_half))
-
-            mma_pipeline.consumer_wait(mma_consumer_state)
-
-            block_vocab_left_idx: cutlass.Int64 = (
-                split_idx * self.vocab_per_split + pidn * self.epi_tile[1]
+            # TMA S2G partition for full output tensor (use TMA tensor mC)
+            tCgC = thr_mma.partition_C(mC)
+            tCgC_t = transform_partitioned_tensor_layout(tCgC)
+            tCgC_epi = cute.flat_divide(tCgC_t, self.epi_subtile)
+            bSG_sC_tma, bSG_gC_all = cpasync.tma_partition(
+                tma_atom_c,
+                0,
+                cute.make_layout(1),
+                cute.group_modes(sC, 0, 2),
+                cute.group_modes(tCgC_epi, 0, 2),
             )
-            block_vocab_right_idx: cutlass.Int64 = min(
-                split_idx * self.vocab_per_split + (pidn + 1) * self.epi_tile[1],
-                min((split_idx + 1) * self.vocab_per_split, problem_mnk[1]),
+
+            # PipelineTmaStore for S2G synchronization
+            c_pipeline = pipeline.PipelineTmaStore.create(
+                num_stages=self.num_c_stage,
+                producer_group=make_thread_cooperative_group(
+                    self.threads_per_warp * len(self.epi_warp_ids)
+                ),
             )
-            num_n_subtiles: cutlass.Int64 = cute.ceil_div(
-                (block_vocab_right_idx - block_vocab_left_idx), cute.size(tTMEM_load_rAcc, mode=[0])
+
+            # Epilogue sync barrier (R2S → S2G synchronization)
+            epilog_sync_barrier = pipeline.NamedBarrier(
+                barrier_id=self.epilog_sync_bar_id,
+                num_threads=self.threads_per_warp * len(self.epi_warp_ids),
             )
-            for n_subtile in cutlass.range(num_n_subtiles):
-                cute.copy(
-                    tiled_copy_t2r,
-                    tTMEM_load_tAcc[(None, None, None, n_subtile, mma_consumer_state.index)],
-                    tTMEM_load_rAcc,
+
+            # Persistent epilogue loop
+            scheduler = TileSchedulerCls()
+            work_tile = scheduler.initial_work_tile_info()
+            while work_tile.is_valid_tile:
+                pidm, pidn = work_tile.tile_idx
+
+                # Per-CTA M index: pidm is 128-row tile, each CTA handles 64 rows
+                pidm_cta = pidm * self.cluster_m_size + mma_tile_coord_v
+
+                # Per-tile: load labels, accu, dlogprobs
+                gLabels = cute.local_tile(mLabels, (self.epi_tile[0],), (pidm_cta,))
+                gAccu = cute.local_tile(mAccu, (self.epi_tile[0],), (pidm_cta,))
+
+                tMCAcc_mask = cute.make_fragment(tMCAcc.shape, cutlass.Boolean)
+                tMCAcc_mask = cute.append_ones(tMCAcc_mask)
+                tMCAcc_mask[0] = (
+                    cute.elem_less(tidx, self.epi_tile[0])
+                    and cute.elem_less(
+                        pidm_cta * self.epi_tile[0] + tidx, cute.size(mA, mode=[0])
+                    )
                 )
 
-                for idx in cutlass.range(cute.size(tTMEM_load_rAcc, mode=[0]), unroll_full=True):
-                    # softmax
-                    tTMEM_load_rAcc[idx] = cute.exp(tTMEM_load_rAcc[idx] - tMrAccu[0])
+                tMgLabels = thr_copy_g2r_int64.partition_S(cute.append_ones(gLabels))
+                tMrLabels = cute.make_fragment(tMgLabels.shape, tMgLabels.element_type)
+                cute.copy(tiled_copy_g2r_int64, tMgLabels, tMrLabels, pred=tMCAcc_mask)
+                tMgAccu = thr_copy_g2r_fp32.partition_S(cute.append_ones(gAccu))
+                tMrAccu = cute.make_fragment(tMgAccu.layout, tMgAccu.element_type)
+                cute.copy(tiled_copy_g2r_fp32, tMgAccu, tMrAccu, pred=tMCAcc_mask)
 
-                    position: cutlass.Int64 = (
-                        rank * problem_mnk[1]
-                        + split_idx * self.vocab_per_split
-                        + pidn * self.epi_tile[1]
-                        + n_subtile * cute.size(tTMEM_load_rAcc, mode=[0])
-                        + idx
-                    )
-                    mask: cutlass.Boolean = (
-                        position == tMrLabels[0] and tMrLabels[0] != ignore_index
-                    )
-                    # d_logits
-                    tTMEM_load_rAcc[idx] *= tMrDlogprobs[0]
-                    tTMEM_load_rAcc[idx] += mask * -tMrDlogprobs[0]
-                    dLogits_half[idx] = tTMEM_load_rAcc[idx].to(dLogits_half.element_type)
+                tMrDlogprobs = cute.make_fragment(tMgAccu.layout, mDlogprobs.element_type)
+                if cutlass.const_expr(self.REDUCTION == 2):
+                    num_valid_tokens = cute.make_tensor(scalarNumValidTokens, layout=(1,))
+                    tMrDlogprobs[0] = mDlogprobs[0] / num_valid_tokens[0].to(cutlass.Float32)
+                elif cutlass.const_expr(self.REDUCTION == 1):
+                    tMrDlogprobs[0] = mDlogprobs[0]
+                else:
+                    gDlogprobs = cute.local_tile(mDlogprobs, (self.epi_tile[0],), (pidm_cta,))
+                    tMgDlogprobs = thr_copy_g2r_fp32.partition_S(cute.append_ones(gDlogprobs))
+                    cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs, tMrDlogprobs, pred=tMCAcc_mask)
 
-                for idx in cutlass.range(cute.size(dLogits_half, mode=[1]), unroll_full=True):
-                    copy_id = n_subtile * cute.size(dLogits_half, mode=[1]) + idx
+                tMrDlogprobs[0] *= tMrLabels[0] != ignore_index
+
+                mma_pipeline.consumer_wait(mma_consumer_state)
+
+                block_vocab_left_idx: cutlass.Int64 = (
+                    split_idx * self.vocab_per_split + pidn * self.epi_tile[1]
+                )
+                block_vocab_right_idx: cutlass.Int64 = min(
+                    split_idx * self.vocab_per_split + (pidn + 1) * self.epi_tile[1],
+                    min((split_idx + 1) * self.vocab_per_split, problem_mnk[1]),
+                )
+                num_n_subtiles: cutlass.Int64 = cute.ceil_div(
+                    (block_vocab_right_idx - block_vocab_left_idx),
+                    cute.size(tTMEM_load_rAcc, mode=[0]),
+                )
+                for n_subtile in cutlass.range(num_n_subtiles):
+                    # T2R: load accumulator from TMEM to registers
                     cute.copy(
-                        tiled_copy_r2g,
-                        dLogits_half[(None, idx, None)],
-                        tR2GgDlogits[(None, None, copy_id)],
-                        pred=tR2GCAcc_pred[((0, None), None, copy_id)],
+                        tiled_copy_t2r,
+                        tTMEM_load_tAcc[(None, None, None, n_subtile, mma_consumer_state.index)],
+                        tTMEM_load_rAcc,
                     )
 
-            mma_pipeline.consumer_release(mma_consumer_state)
-            mma_consumer_state.advance()
+                    # Per-element: softmax gradient computation
+                    for idx in cutlass.range(
+                        cute.size(tTMEM_load_rAcc, mode=[0]), unroll_full=True
+                    ):
+                        tTMEM_load_rAcc[idx] = cute.exp(tTMEM_load_rAcc[idx] - tMrAccu[0])
+
+                        position: cutlass.Int64 = (
+                            rank * problem_mnk[1]
+                            + split_idx * self.vocab_per_split
+                            + pidn * self.epi_tile[1]
+                            + n_subtile * cute.size(tTMEM_load_rAcc, mode=[0])
+                            + idx
+                        )
+                        mask: cutlass.Boolean = (
+                            position == tMrLabels[0] and tMrLabels[0] != ignore_index
+                        )
+                        tTMEM_load_rAcc[idx] *= tMrDlogprobs[0]
+                        tTMEM_load_rAcc[idx] += mask * -tMrDlogprobs[0]
+
+                    # R2S: retile, convert FP32→output dtype, store to SMEM
+                    acc_vec = tiled_copy_r2s.retile(tTMEM_load_rAcc).load()
+                    acc_vec = acc_vec.to(mDlogits_partial.element_type)
+                    tRS_rC.store(acc_vec)
+                    c_buffer = n_subtile % self.num_c_stage
+                    cute.copy(
+                        tiled_copy_r2s,
+                        tRS_rC,
+                        tRS_sC[(None, None, None, c_buffer)],
+                    )
+
+                    # Fence + barrier: ensure R2S visible to TMA
+                    cute.arch.fence_proxy("async.shared", space="cta")
+                    epilog_sync_barrier.arrive_and_wait()
+
+                    # S2G: TMA store from SMEM to GMEM (warp 0 only)
+                    if warp_idx == self.epi_warp_ids[0]:
+                        n_global = pidn * self.num_epi_stage_per_tile + n_subtile
+                        bSG_gC = bSG_gC_all[(None, pidm, n_global)]
+                        cute.copy(
+                            tma_atom_c,
+                            bSG_sC_tma[(None, c_buffer)],
+                            bSG_gC,
+                        )
+                        c_pipeline.producer_commit()
+                        c_pipeline.producer_acquire()
+                    epilog_sync_barrier.arrive_and_wait()
+
+                mma_pipeline.consumer_release(mma_consumer_state)
+                mma_consumer_state.advance()
+
+                scheduler.advance_to_next_work()
+                work_tile = scheduler.get_current_work()
+
+            # Wait for all TMA stores to complete before kernel exit
+            c_pipeline.producer_tail()
 
         # ------ Deallocate TMEM ------ #
         self.cta_sync_barrier.arrive_and_wait()
@@ -530,10 +637,16 @@ class BwdPartialDlogits:
         if cutlass.const_expr((problem_mnk[2] * b_dtype.width // 8) % 128 != 0):
             raise RuntimeError(f"K dimension is not 128B aligned: {problem_mnk[2]}")
 
-        grid = self._compute_grid(
-            problem_mnk=problem_mnk,
-            cluster_shape_mn=self.cluster_shape_mn,
-            cta_tiler=self.mma_tiler,
+        num_m_tiles = cute.ceil_div(problem_mnk[0], self.mma_tiler[0])
+        num_n_tiles = cute.ceil_div(self.vocab_per_split, self.mma_tiler[1])
+        sched_params_init = TileSchedulerParams(
+            num_tiles_M=cutlass.Int32(num_m_tiles),
+            num_tiles_N=cutlass.Int32(num_n_tiles),
+        )
+        sched_params = StaticPersistentScheduler.to_underlying_arguments(sched_params_init)
+        self.cluster_m_size = self.cluster_shape_mn[0]
+        grid = StaticPersistentScheduler.get_grid_shape(
+            sched_params, cluster_m_size=self.cluster_m_size, occupancy=1
         )
 
         a_major_mode = utils.LayoutEnum.from_tensor(hidden).mma_major_mode()
@@ -545,6 +658,25 @@ class BwdPartialDlogits:
         self._setup_attributes(tiled_mma, a_dtype, b_dtype)
 
         self.epi_tile = self.cta_tile_shape_mnk[:2]
+        self.num_k_tiles = cute.ceil_div(problem_mnk[2], self.cta_tile_shape_mnk[2])
+        self.epi_subtile = (
+            self.epi_tile[0],
+            self.epi_tile[1] // self.num_epi_stage_per_tile,
+        )
+
+        # C staging buffer for TMA S2G store
+        output_dtype = dlogits_partial.element_type
+        output_layout = utils.LayoutEnum.from_tensor(dlogits_partial)
+        c_smem_layout_staged = sm100_utils.make_smem_layout_epi(
+            output_dtype, output_layout, self.epi_subtile, self.num_c_stage
+        )
+        c_smem_layout_one_stage = cute.slice_(c_smem_layout_staged, (None, None, 0))
+        tma_atom_c, tma_tensor_c = cpasync.make_tiled_tma_atom(
+            cpasync.CopyBulkTensorTileS2GOp(),
+            dlogits_partial,
+            c_smem_layout_one_stage,
+            self.epi_subtile,
+        )
 
         # Swizzle o [(tileM, tileK), loopM, loopK, stage]
         a_smem_layout_staged = sm100_utils.make_smem_layout_a(
@@ -554,13 +686,18 @@ class BwdPartialDlogits:
         b_smem_layout_staged = sm100_utils.make_smem_layout_b(
             tiled_mma, self.mma_tiler, b_dtype, self.num_ab_stage
         )
-        tma_load_op = cpasync.CopyBulkTensorTileG2SOp(self.cta_group)
-        tma_store_op = cpasync.CopyBulkTensorTileS2GOp()
+        atom_thr_size = cute.size(tiled_mma.thr_id.shape)
+        tma_load_op_a = sm100_utils.cluster_shape_to_tma_atom_A(
+            self.cluster_shape_mn, tiled_mma.thr_id
+        )
+        tma_load_op_b = sm100_utils.cluster_shape_to_tma_atom_B(
+            self.cluster_shape_mn, tiled_mma.thr_id
+        )
 
         # Swizzle o [(tileM, tileK), loopM, loopK]
         a_smem_layout = cute.select(a_smem_layout_staged, mode=[0, 1, 2])
         tma_atom_a, tma_tensor_a = cute.nvgpu.make_tiled_tma_atom_A(
-            tma_load_op,
+            tma_load_op_a,
             hidden,
             a_smem_layout,
             self.mma_tiler,
@@ -570,7 +707,7 @@ class BwdPartialDlogits:
         # Swizzle o [(tileN, tileK), loopN, loopK]
         b_smem_layout = cute.select(b_smem_layout_staged, mode=[0, 1, 2])
         tma_atom_b, tma_tensor_b = cute.nvgpu.make_tiled_tma_atom_B(
-            tma_load_op,
+            tma_load_op_b,
             weight,
             b_smem_layout,
             self.mma_tiler,
@@ -579,7 +716,7 @@ class BwdPartialDlogits:
         )
         a_copy_size = cute.size_in_bytes(a_dtype, a_smem_layout)
         b_copy_size = cute.size_in_bytes(b_dtype, b_smem_layout)
-        self.tma_copy_ab_bytes = a_copy_size + b_copy_size
+        self.tma_copy_ab_bytes = (a_copy_size + b_copy_size) * atom_thr_size
 
         @cute.struct
         class SharedStorage:
@@ -601,6 +738,10 @@ class BwdPartialDlogits:
                 cute.struct.MemRange[b_dtype, cute.cosize(b_smem_layout_staged)],
                 self.buffer_align_bytes,
             ]
+            sC: cute.struct.Align[
+                cute.struct.MemRange[output_dtype, cute.cosize(c_smem_layout_staged)],
+                self.buffer_align_bytes,
+            ]
 
         self.shared_storage = SharedStorage
 
@@ -611,6 +752,8 @@ class BwdPartialDlogits:
             tma_tensor_a,
             tma_atom_b,
             tma_tensor_b,
+            tma_atom_c,
+            tma_tensor_c,
             labels,
             dlogprobs,
             accu,
@@ -619,9 +762,11 @@ class BwdPartialDlogits:
             ignore_index,
             a_smem_layout_staged,
             b_smem_layout_staged,
+            c_smem_layout_staged,
             self.cluster_layout_vmnk,
             problem_mnk,
             rank,
+            sched_params,
         ).launch(
             grid=grid,
             block=[self.threads_per_cta, 1, 1],

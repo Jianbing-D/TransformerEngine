@@ -78,11 +78,13 @@ class StaticPersistentScheduler:
         params: Params,
         tile_idx: Int32,
         *,
+        cluster_m_size: int = 1,
         loc=None,
         ip=None,
     ):
         self.params = params
         self.tile_idx = tile_idx
+        self.cluster_m_size = cluster_m_size
         self.loc = loc
         self.ip = ip
 
@@ -91,14 +93,17 @@ class StaticPersistentScheduler:
         return StaticPersistentScheduler.Params.create(args, loc=loc, ip=ip)
 
     @staticmethod
-    def create(params: Params, *, loc=None, ip=None) -> "StaticPersistentScheduler":
-        tile_idx = cute.arch.block_idx()[0]
-        return StaticPersistentScheduler(params, tile_idx, loc=loc, ip=ip)
+    def create(params: Params, *, cluster_m_size: int = 1, loc=None, ip=None) -> "StaticPersistentScheduler":
+        tile_idx = cute.arch.block_idx()[0] // cluster_m_size
+        sched = StaticPersistentScheduler(params, tile_idx, loc=loc, ip=ip)
+        sched.cluster_m_size = cluster_m_size
+        return sched
 
     @staticmethod
     def get_grid_shape(
         params: Params,
         *,
+        cluster_m_size: int = 1,
         sm_count: Optional[Int32] = None,
         occupancy: Int32 = 1,
         loc=None,
@@ -108,7 +113,7 @@ class StaticPersistentScheduler:
             hardware_info = cutlass.utils.HardwareInfo()
             sm_count = hardware_info.get_device_multiprocessor_count()
         vacancies = sm_count * occupancy
-        return (cutlass.min(vacancies, params.total_blocks), Int32(1), Int32(1))
+        return (cutlass.min(vacancies, params.total_blocks) * cluster_m_size, Int32(1), Int32(1))
 
     def get_current_work(self, *, loc=None, ip=None) -> WorkTileInfo:
         m_idx, n_idx = divmod(self.tile_idx, self.params.num_tiles_M_divmod)
@@ -124,7 +129,7 @@ class StaticPersistentScheduler:
         pass
 
     def advance_to_next_work(self, *, loc=None, ip=None):
-        self.tile_idx += cute.arch.grid_dim()[0]
+        self.tile_idx += cute.arch.grid_dim()[0] // self.cluster_m_size
 
     def __extract_mlir_values__(self):
         values, self._values_pos = [], []
@@ -142,7 +147,9 @@ class StaticPersistentScheduler:
         ):
             obj_list.append(cutlass.new_from_mlir_values(obj, values[:n_items]))
             values = values[n_items:]
-        return StaticPersistentScheduler(*(tuple(obj_list)), loc=self.loc)
+        return StaticPersistentScheduler(
+            *(tuple(obj_list)), cluster_m_size=self.cluster_m_size, loc=self.loc
+        )
 
 
 if __name__ == "__main__":

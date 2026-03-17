@@ -47,7 +47,7 @@ Tasks:
       - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
   - id: 4
     name: "Optimize the backward kernel bwd_partial_dlogits.py"
-    status: "not started"
+    status: "completed"
     description:
       - bwd_partial_dlogits.py contains the backward kernel implementation to calculate the partial d_logits tensor.
       - generally speaking, bwd_partial_dlogits kernel is only a GEMM kernel with fused epilogue operations.
@@ -61,8 +61,8 @@ Tasks:
       - ../CUTLASS/examples/python/CuTeDSL/blackwell/ contains the examples of cuteDSL APIs, including GEMM kernel implementations.
       - ./transformer_engine/common/cutedsl/linear_cross_entropy/scheduler.py contains my static tile scheduler implementation.
     steps:
-      - read my kernel (bwd_partial_dlogits.py) in depth, understand how it works. Write a detailed report about the kernel implementation to KNOWLEDGE.md.
-      - ready the examples of cutlass GEMM kernel implementations in depth, understand how they work. Write a detailed report about the GEMM kernel implementations to KNOWLEDGE.md, including their optimization techniques.
+      - read my kernel (bwd_partial_dlogits.py) in depth, understand how it works.
+      - ready the examples of cutlass GEMM kernel implementations in depth, understand how they work. Write a detailed report about those example GEMM kernel implementations to KNOWLEDGE, including their optimization techniques.
       - write a thorough plan about how to apply those optimization techniques to my kernel, including the trade-offs and performance improvements.
       - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
       - remember to update KNOWLEDGE.md and PROGRESS.md when you completed each step, and each trial.

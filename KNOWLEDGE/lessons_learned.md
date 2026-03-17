@@ -105,3 +105,43 @@ Variables that depend on `(pidm, pidn)` are recomputed per tile inside each warp
 - `gA`, `gB`, TMA partitions (load warp)
 - `num_n_tiles` from `pidn` (all warp groups)
 - Register fragments (`tR2GrMax.fill(-1e30)`, etc.) reset each tile (epilogue warpgroup)
+
+---
+
+## Task-4 Optimization Insights (BwdPartialDlogits)
+
+### Optimization Phase Results
+
+| Phase | Duration | SMEM | Registers | Key Change |
+|-------|----------|------|-----------|------------|
+| Baseline (naive grid) | 162.43 μs | 197.63 KB | 128/thr | Static grid (32,12,1)=384 tiles |
+| Phase 1: Persistent Scheduler | 163.55 μs | 197.63 KB | 128/thr | Grid→152 (1 wave), but per-tile GMEM recomputation offsets tail wave savings |
+| Phase 2: TMA S2G Store | 153.70 μs | 214.02 KB | 117/thr | R2G→R2S+S2G, removes predicate registers, **5.4% speedup** |
+| Phase 3: 2-CTA MMA | 154.62 μs | 148.48 KB | 119/thr | Cluster(2,1), mma_tiler=(256,256), performance neutral |
+
+### L6: Persistent Scheduler Overhead Can Offset Tail-Wave Savings
+When tile count is close to SM count (384 tiles on 132 SMs = ~3 waves), the persistent scheduler reduces wave tail (384→152 CTAs, 1 wave). However, per-tile GMEM/TMA partition recomputation inside the persistent loop adds overhead that can completely offset the savings. Net effect: **neutral**. Persistent scheduler is most beneficial when wave quantization is severe (many more tiles than SMs).
+
+### L7: TMA S2G Store Reduces Register Pressure
+Replacing predicated R2G stores with TMA S2G (via R2S→fence→barrier→S2G pattern) saved 11 registers/thread (128→117) by eliminating store predicate computation. The 5.4% speedup came from removing per-element GMEM store predication, not from TMA bandwidth advantage. **Key gotcha**: `tma_partition()` requires the TMA tensor from `make_tiled_tma_atom`, not the raw GMEM tensor.
+
+### L8: 2-CTA MMA Doesn't Help Epilogue-Bound Kernels
+2-CTA MMA reduces the number of MMA instructions (leader CTA only issues GEMM; both CTAs handle epilogue). For bwd_partial_dlogits, the epilogue (per-element softmax gradient: `exp`, subtract, multiply, mask) dominates runtime, not the GEMM. 2-CTA halves the MMA instruction overhead but doesn't reduce epilogue work — each CTA still processes its share of output elements. **Rule of thumb**: 2-CTA MMA only helps when the kernel is compute/MMA-bound, not when epilogue or memory operations dominate.
+
+### L9: 2-CTA Pipeline Consumer Group Sizing
+When enabling 2-CTA MMA, the `PipelineUmmaAsync` (accumulator pipeline) consumer group must account for **both** CTAs' epilogue warpgroups. If the consumer count only reflects one CTA, the `consumer_release` barrier fires early (after one CTA's threads arrive), allowing the MMA warp to overwrite TMEM while the other CTA is still reading. This causes silent data corruption, not a hang.
+
+```python
+# WRONG: only counts one CTA's epilogue threads
+consumer_group = make_thread_cooperative_group(threads_per_warp * len(epi_warp_ids))
+
+# CORRECT: counts both CTAs' epilogue threads
+consumer_threads = threads_per_warp * len(epi_warp_ids) * (2 if use_2cta_instrs else 1)
+consumer_group = make_thread_cooperative_group(consumer_threads)
+```
+
+### L10: mma_tiler_mn Must Scale with 2-CTA
+With `use_2cta_instrs=True`, `cta_tile_shape_mnk[0] = mma_tiler_M // atom_thr_size`. To maintain 128 M-rows per CTA (same as 1-CTA baseline), `mma_tiler_mn` must be `(256, N)` not `(128, N)`. Using (128, N) gives only 64 M-rows per CTA, which causes incorrect results due to tile size mismatches in epilogue partitioning and TMA store addressing.
+
+### L11: NCU Profiling with Clusters
+When profiling 2-CTA kernels with NCU, the grid size doubles (`grid = tiles * cluster_m_size`). The `--launch-skip` count in the Makefile target must be recalibrated. Key NCU metrics for 2-CTA: look at "Cluster Size", "Cluster Scheduling Policy" (should be "PolicySpread"), and "Max Active Clusters" to understand SM utilization.
