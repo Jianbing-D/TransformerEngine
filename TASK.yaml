@@ -45,3 +45,33 @@ Tasks:
       - then consider different ways to implement it, mapping those concepts with cuteDSL APIs.
       - write a detailed report to KNOWLEDGE.md about the different implementations and their trade-offs.
       - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+  - id: 4
+    name: "Optimize the backward kernel bwd_partial_dlogits.py"
+    status: "not started"
+    description:
+      - bwd_partial_dlogits.py contains the backward kernel implementation to calculate the partial d_logits tensor.
+      - generally speaking, bwd_partial_dlogits kernel is only a GEMM kernel with fused epilogue operations.
+      - common used GEMM optimizations could be applied to that kernel, including:
+        - use TMA for write out of d_logits tensor.
+        - use persistent scheduler to make the kernel run in a persistent way.
+        - use 2-CTA MMA instructions to improve the performance.
+    material:
+      - ./transformer_engine/common/cutedsl/linear_cross_entropy/blackwell/bwd_partial_dlogits.py contains cuteDSL kernel for bwd_partial_dlogits.
+      - ../CUTLASS/python/CuteDSL/ contains the source code of cuteDSL APIs.
+      - ../CUTLASS/examples/python/CuTeDSL/blackwell/ contains the examples of cuteDSL APIs, including GEMM kernel implementations.
+      - ./transformer_engine/common/cutedsl/linear_cross_entropy/scheduler.py contains my static tile scheduler implementation.
+    steps:
+      - read my kernel (bwd_partial_dlogits.py) in depth, understand how it works. Write a detailed report about the kernel implementation to KNOWLEDGE.md.
+      - ready the examples of cutlass GEMM kernel implementations in depth, understand how they work. Write a detailed report about the GEMM kernel implementations to KNOWLEDGE.md, including their optimization techniques.
+      - write a thorough plan about how to apply those optimization techniques to my kernel, including the trade-offs and performance improvements.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - remember to update KNOWLEDGE.md and PROGRESS.md when you completed each step, and each trial.
+    permission:
+      - YOU MUST NOT execute git commit command in any way.
+      - You have access to all files in the current directory.
+      - You have access to all files in the ../CUTLASS directory.
+      - You may start sub-agents to help you with the task.
+      - When you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+      - When you verified the correctness of the kernel, use `make ncu-bwd-cli` to profile the kernel performance.
+      - `bwd_partial_dlogits.log` is the profile log of the kernel, you can use it to analyze the kernel performance.
+      - Generally speaking, the lower the Duration, the better the performance.
