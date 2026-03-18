@@ -1,7 +1,57 @@
 # Progress
 
-## Task-7: Move Tensor Partitions Outside While Loops in bwd_partial_dlogits.py
+## Task-8: Use Vanilla Grid Scheduling in bwd_partial_dlogits.py
 **Status: In Progress**
+
+### PLAN-Task8: Replace Persistent Scheduler with Vanilla Grid
+
+#### Problem
+The kernel uses `StaticPersistentScheduler` which caps grid to SM count and loops CTAs over multiple tiles. For this kernel's typical problem sizes (e.g. 16 total tiles, 76 available clusters), the scheduler already assigns ≤1 tile per CTA, so the while loop runs at most once. The persistent overhead (scheduler state, advance logic) adds complexity for no benefit.
+
+#### Solution
+Use vanilla 2D grid scheduling: launch `(M_ctas, N_tiles, 1)` grid, each CTA processes exactly one tile using `block_idx()`.
+
+- `grid = _compute_grid(...)` → `(ceil_div(M, cta_m) rounded to cluster, ceil_div(vocab_per_split, cta_n), 1)`
+- `pidm = bidx // cluster_m_size` (cluster index = M-tile index)
+- `pidn = bidy` (grid y = N-tile index)
+
+#### Changes
+
+**`__call__`:**
+- Use `_compute_grid` instead of `StaticPersistentScheduler.get_grid_shape`
+- Remove `TileSchedulerParams`, `sched_params_init`, `sched_params`
+- Remove `scheduler_params` from kernel call
+
+**Kernel:**
+- Remove `scheduler_params` parameter
+- Extract `bidy` from `block_idx()`, compute `pidm`/`pidn` once at top
+- Remove `TileSchedulerCls`
+- All 4 warp groups: remove scheduler + while loop → single-pass execution
+- Load/EPI warps: go back to per-tile partitions (no "all-tile" needed since no loop)
+
+#### Results
+- Grid: `(32, 12, 1)` = 384 CTAs = 192 clusters (2D: 16 M-clusters × 12 N-tiles)
+- Waves: 2.53 (192 clusters / 76 max clusters)
+- Duration: **145.89 μs** (vs 136.86 μs persistent = 6.6% slower)
+- Compute throughput: 66.77% (up from 60.72% persistent)
+- Registers: 127/thread (vs 119 persistent)
+- SMEM: 181.25 KB dynamic (vs 148.48 persistent)
+- NCU tail wave estimate: 33.33% speedup potential if eliminated
+
+The vanilla scheduling is slower due to the tail wave effect (2.53 waves vs 1 wave with persistent). The persistent scheduler capped at 76 clusters (1 wave on 152 SMs) while vanilla launches all 192 clusters.
+
+#### TODO-list
+- [x] Write plan to PROGRESS.md
+- [x] Implement `__call__` changes (grid via `_compute_grid`, remove scheduler params)
+- [x] Implement kernel changes (remove while loops, per-tile partitions, `pidm`/`pidn` from `block_idx`)
+- [x] Run `make unit-test-1gpu` — **75 passed, 89 skipped**
+- [x] Run `make unit-test-4gpu` — **88 passed, 76 skipped**
+- [x] Run `make ncu-bwd-cli` — **145.89 μs** (vanilla 2D grid)
+
+---
+
+## Task-7: Move Tensor Partitions Outside While Loops in bwd_partial_dlogits.py
+**Status: Completed**
 
 ### PLAN-Task7: Hoist Tensor Partitions
 

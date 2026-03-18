@@ -111,3 +111,13 @@ Tasks:
     steps:
       - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
       - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+  - id: 8
+    name: "Use vanilla grid scheduling in bwd_partial_dlogits.py"
+    status: "completed"
+    description:
+      - currently, the kernel is using the static tile scheduler, which may not bring the best performance.
+      - we should use the vanilla grid scheduling to schedule the kernel.
+    steps:
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+      - When you verified the correctness of the kernel, use `make ncu-bwd-cli` to profile the kernel performance.
