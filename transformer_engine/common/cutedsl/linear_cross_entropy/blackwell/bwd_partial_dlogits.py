@@ -4,6 +4,7 @@
 
 from typing import Optional, Tuple, Type
 from functools import partial
+import math
 
 import cuda.bindings.driver as cuda  # type: ignore
 import cutlass
@@ -20,6 +21,7 @@ from transformer_engine.common.cutedsl.linear_cross_entropy.scheduler import (
     TileSchedulerParams,
     ParamsBase,
 )
+from transformer_engine.common.cutedsl.linear_cross_entropy import ptx
 
 SM100_TMEM_CAPACITY_COLUMNS: int = 512
 
@@ -76,6 +78,8 @@ class BwdPartialDlogits:
         self.num_regs_other: int = 32
         self.num_regs_epi: int = 192
         self.epilog_sync_bar_id: int = 2
+
+        self.LOG2_E: float = math.log2(math.e)
 
     def _compute_grid(
         self,
@@ -538,6 +542,9 @@ class BwdPartialDlogits:
                 cute.copy(tiled_copy_g2r_int64, tMgLabels_all[(None, None, pidm_cta, None)], tMrLabels, pred=tMCAcc_mask)
                 cute.copy(tiled_copy_g2r_fp32, tMgAccu_all[(None, None, pidm_cta, None)], tMrAccu, pred=tMCAcc_mask)
 
+                # scale accu (lse) to log2 scale
+                tMrAccu[0] *= self.LOG2_E
+
                 if cutlass.const_expr(self.REDUCTION == 2):
                     tMrDlogprobs[0] = mDlogprobs[0] / num_valid_tokens[0].to(cutlass.Float32)
                 elif cutlass.const_expr(self.REDUCTION == 1):
@@ -569,23 +576,21 @@ class BwdPartialDlogits:
                     )
 
                     # Per-element: softmax gradient computation
-                    for idx in cutlass.range(
-                        cute.size(tTMEM_load_rAcc, mode=[0]), unroll_full=True
-                    ):
-                        tTMEM_load_rAcc[idx] = cute.exp(tTMEM_load_rAcc[idx] - tMrAccu[0])
+                    pos_start: cutlass.Int64 = (
+                        rank * problem_mnk[1]
+                        + split_idx * self.vocab_per_split
+                        + pidn * self.epi_tile[1]
+                        + n_subtile * cute.size(tTMEM_load_rAcc, mode=[0])
+                    )
+                    for idx in cutlass.range_constexpr(cute.size(tTMEM_load_rAcc, mode=[0])):
+                        tTMEM_load_rAcc[idx] = ptx.fma(tTMEM_load_rAcc[idx], self.LOG2_E,  -tMrAccu[0])
+                        tTMEM_load_rAcc[idx] = cute.math.exp2(tTMEM_load_rAcc[idx], fastmath=True)
 
-                        position: cutlass.Int64 = (
-                            rank * problem_mnk[1]
-                            + split_idx * self.vocab_per_split
-                            + pidn * self.epi_tile[1]
-                            + n_subtile * cute.size(tTMEM_load_rAcc, mode=[0])
-                            + idx
-                        )
+                        pos: cutlass.Int64 = pos_start + idx
                         mask: cutlass.Boolean = (
-                            position == tMrLabels[0] and tMrLabels[0] != ignore_index
+                            pos == tMrLabels[0] and tMrLabels[0] != ignore_index
                         )
-                        tTMEM_load_rAcc[idx] *= tMrDlogprobs[0]
-                        tTMEM_load_rAcc[idx] += mask * -tMrDlogprobs[0]
+                        tTMEM_load_rAcc[idx] = ptx.fma(tTMEM_load_rAcc[idx], tMrDlogprobs[0], mask * -tMrDlogprobs[0])
 
                     # R2S: retile, convert FP32→output dtype, store to SMEM
                     acc_vec = tiled_copy_r2s.retile(tTMEM_load_rAcc).load()
