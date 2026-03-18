@@ -100,3 +100,14 @@ Tasks:
       - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
       - When you verified the correctness of the kernel, use `make ncu-bwd-cli` to profile the kernel performance.
       - the lower the Duration, the better the performance.
+  - id: 7
+    name: "Move tensor partitions outside the while loop in bwd_partial_dlogits.py"
+    status: "completed"
+    description:
+      - move those tensor partitions outside the while loop in bwd_partial_dlogits.py.
+      - for example, the gA and gB tensor partitions should be moved outside the while loop.
+      - and then just use the correct index to access the tensor partitions in the while loop.
+      - finally, there will be no more tensor partitions inside the while loop.
+    steps:
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.

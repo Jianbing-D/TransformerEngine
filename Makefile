@@ -56,7 +56,14 @@ ncu-bwd:
 
 ncu-bwd-cli:
 	ONLY_PROFILE=1 ncu --kernel-name regex:bwd_partial_dlogits \
-		--launch-skip 133 --launch-count 1 \
+		--launch-skip 2 --launch-count 1 \
 		--clock-control=none \
 		--log-file bwd_partial_dlogits.log \
+		pytest -s -v tests/pytorch/test_linear_cross_entropy.py
+
+ncu-bwd-cublas-cli:
+	ONLY_PROFILE=1 ncu --kernel-name nvjet_sm100_tss_128x256_64x6_2x1_2cta_v_badd_NNT \
+		--launch-skip 129 --launch-count 1 \
+		--clock-control=none \
+		--log-file bwd_partial_dlogits_cublas.log \
 		pytest -s -v tests/pytorch/test_linear_cross_entropy.py

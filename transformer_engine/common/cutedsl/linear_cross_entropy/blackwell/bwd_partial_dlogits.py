@@ -337,47 +337,47 @@ class BwdPartialDlogits:
         if warp_idx == self.load_warp_ids:
             cute.arch.warpgroup_reg_dealloc(self.num_regs_other)
 
+            # Pre-compute all-tile GMEM partitions outside the loop
+            gA_all = cute.local_tile(
+                mA, (self.mma_tiler[0], self.cta_tile_shape_mnk[2]), (None, None)
+            )
+            gB_all = cute.local_tile(
+                mB_n, (self.cta_tile_shape_mnk[1], self.cta_tile_shape_mnk[2]), (None, None)
+            )
+            tCgA_all = thr_mma.partition_A(gA_all)
+            tCgB_all = thr_mma.partition_B(gB_all)
+            tTMAsA, tTMAgA_all = cpasync.tma_partition(
+                tma_atom_a,
+                block_in_cluster_coord_vmnk[2],
+                a_cta_layout,
+                cute.group_modes(sA, 0, 3),
+                cute.group_modes(tCgA_all, 0, 3),
+            )
+            tTMAsB, tTMAgB_all = cpasync.tma_partition(
+                tma_atom_b,
+                block_in_cluster_coord_vmnk[1],
+                b_cta_layout,
+                cute.group_modes(sB, 0, 3),
+                cute.group_modes(tCgB_all, 0, 3),
+            )
+
             scheduler = TileSchedulerCls()
             work_tile = scheduler.initial_work_tile_info()
             while work_tile.is_valid_tile:
                 pidm, pidn = work_tile.tile_idx
 
-                # Per-tile GMEM partitions (use mma_tiler M for 2-CTA: partition_A handles split)
-                gA = cute.local_tile(
-                    mA, (self.mma_tiler[0], self.cta_tile_shape_mnk[2]), (pidm, None)
-                )
-                gB = cute.local_tile(
-                    mB_n, (self.cta_tile_shape_mnk[1], self.cta_tile_shape_mnk[2]), (pidn, None)
-                )
-                tCgA = thr_mma.partition_A(gA)
-                tCgB = thr_mma.partition_B(gB)
-                tTMAsA, tTMAgA = cpasync.tma_partition(
-                    tma_atom_a,
-                    block_in_cluster_coord_vmnk[2],
-                    a_cta_layout,
-                    cute.group_modes(sA, 0, 3),
-                    cute.group_modes(tCgA, 0, 3),
-                )
-                tTMAsB, tTMAgB = cpasync.tma_partition(
-                    tma_atom_b,
-                    block_in_cluster_coord_vmnk[1],
-                    b_cta_layout,
-                    cute.group_modes(sB, 0, 3),
-                    cute.group_modes(tCgB, 0, 3),
-                )
-
                 for k in cutlass.range(self.num_k_tiles):
                     ab_pipeline.producer_acquire(ab_producer_state)
                     cute.copy(
                         tma_atom_a,
-                        tTMAgA[(None, k)],
+                        tTMAgA_all[(None, pidm, k)],
                         tTMAsA[(None, ab_producer_state.index)],
                         tma_bar_ptr=ab_pipeline.producer_get_barrier(ab_producer_state),
                         mcast_mask=a_mcast_mask,
                     )
                     cute.copy(
                         tma_atom_b,
-                        tTMAgB[(None, k)],
+                        tTMAgB_all[(None, pidn, k)],
                         tTMAsB[(None, ab_producer_state.index)],
                         tma_bar_ptr=ab_pipeline.producer_get_barrier(ab_producer_state),
                         mcast_mask=b_mcast_mask,
@@ -493,6 +493,32 @@ class BwdPartialDlogits:
                 sC,
             )
 
+            # Pre-compute all-tile partitions outside the loop
+            gLabels_all = cute.local_tile(mLabels, (self.epi_tile[0],), (None,))
+            gAccu_all = cute.local_tile(mAccu, (self.epi_tile[0],), (None,))
+            tMgLabels_all = thr_copy_g2r_int64.partition_S(cute.append_ones(gLabels_all))
+            tMgAccu_all = thr_copy_g2r_fp32.partition_S(cute.append_ones(gAccu_all))
+            if cutlass.const_expr(self.REDUCTION == 0):
+                gDlogprobs_all = cute.local_tile(mDlogprobs, (self.epi_tile[0],), (None,))
+                tMgDlogprobs_all = thr_copy_g2r_fp32.partition_S(cute.append_ones(gDlogprobs_all))
+
+            # Allocate register fragments once (reused across tiles)
+            # tMgLabels_all has 4 modes: ((val_m,val_n), rest_m, num_tiles, rest_appended)
+            tMrLabels = cute.make_fragment(
+                tMgLabels_all[(None, None, 0, None)].shape, tMgLabels_all.element_type
+            )
+            tMrAccu = cute.make_fragment(
+                tMgAccu_all[(None, None, 0, None)].layout, tMgAccu_all.element_type
+            )
+            tMrDlogprobs = cute.make_fragment(
+                tMgAccu_all[(None, None, 0, None)].layout, mDlogprobs.element_type
+            )
+            tMCAcc_mask = cute.make_fragment(tMCAcc.shape, cutlass.Boolean)
+            tMCAcc_mask = cute.append_ones(tMCAcc_mask)
+
+            if cutlass.const_expr(self.REDUCTION == 2):
+                num_valid_tokens = cute.make_tensor(scalarNumValidTokens, layout=(1,))
+
             # Persistent epilogue loop
             scheduler = TileSchedulerCls()
             work_tile = scheduler.initial_work_tile_info()
@@ -502,12 +528,6 @@ class BwdPartialDlogits:
                 # Per-CTA M index: pidm is 128-row tile, each CTA handles 64 rows
                 pidm_cta = pidm * self.cluster_m_size + mma_tile_coord_v
 
-                # Per-tile: load labels, accu, dlogprobs
-                gLabels = cute.local_tile(mLabels, (self.epi_tile[0],), (pidm_cta,))
-                gAccu = cute.local_tile(mAccu, (self.epi_tile[0],), (pidm_cta,))
-
-                tMCAcc_mask = cute.make_fragment(tMCAcc.shape, cutlass.Boolean)
-                tMCAcc_mask = cute.append_ones(tMCAcc_mask)
                 tMCAcc_mask[0] = (
                     cute.elem_less(tidx, self.epi_tile[0])
                     and cute.elem_less(
@@ -515,27 +535,17 @@ class BwdPartialDlogits:
                     )
                 )
 
-                tMgLabels = thr_copy_g2r_int64.partition_S(cute.append_ones(gLabels))
-                tMrLabels = cute.make_fragment(tMgLabels.shape, tMgLabels.element_type)
-                cute.copy(tiled_copy_g2r_int64, tMgLabels, tMrLabels, pred=tMCAcc_mask)
-                tMgAccu = thr_copy_g2r_fp32.partition_S(cute.append_ones(gAccu))
-                tMrAccu = cute.make_fragment(tMgAccu.layout, tMgAccu.element_type)
-                cute.copy(tiled_copy_g2r_fp32, tMgAccu, tMrAccu, pred=tMCAcc_mask)
+                cute.copy(tiled_copy_g2r_int64, tMgLabels_all[(None, None, pidm_cta, None)], tMrLabels, pred=tMCAcc_mask)
+                cute.copy(tiled_copy_g2r_fp32, tMgAccu_all[(None, None, pidm_cta, None)], tMrAccu, pred=tMCAcc_mask)
 
-                tMrDlogprobs = cute.make_fragment(tMgAccu.layout, mDlogprobs.element_type)
                 if cutlass.const_expr(self.REDUCTION == 2):
-                    num_valid_tokens = cute.make_tensor(scalarNumValidTokens, layout=(1,))
                     tMrDlogprobs[0] = mDlogprobs[0] / num_valid_tokens[0].to(cutlass.Float32)
                 elif cutlass.const_expr(self.REDUCTION == 1):
                     tMrDlogprobs[0] = mDlogprobs[0]
                 else:
-                    gDlogprobs = cute.local_tile(mDlogprobs, (self.epi_tile[0],), (pidm_cta,))
-                    tMgDlogprobs = thr_copy_g2r_fp32.partition_S(cute.append_ones(gDlogprobs))
-                    cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs, tMrDlogprobs, pred=tMCAcc_mask)
+                    cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs_all[(None, None, pidm_cta, None)], tMrDlogprobs, pred=tMCAcc_mask)
 
                 tMrDlogprobs[0] *= tMrLabels[0] != ignore_index
-
-                mma_pipeline.consumer_wait(mma_consumer_state)
 
                 block_vocab_left_idx: cutlass.Int64 = (
                     split_idx * self.vocab_per_split + pidn * self.epi_tile[1]
@@ -549,6 +559,7 @@ class BwdPartialDlogits:
                     cute.size(tTMEM_load_rAcc, mode=[0]),
                 )
 
+                mma_pipeline.consumer_wait(mma_consumer_state)
                 for n_subtile in cutlass.range(num_n_subtiles):
                     # T2R: load accumulator from TMEM to registers
                     cute.copy(
