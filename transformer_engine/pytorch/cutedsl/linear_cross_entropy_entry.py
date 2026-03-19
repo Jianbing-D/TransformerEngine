@@ -423,7 +423,7 @@ def backward(
         )
         if _get_bwd_config()._bwd_kernel.get(key) is None:
             bwd_kernel = _get_platform().gpu_entry.bwd_partial_dlogits.BwdPartialDlogits(
-                reduction=REDUCTION.value, vocab_per_split=vocab_per_split
+                reduction=REDUCTION.value, vocab_per_split=vocab_per_split,
             )
             bwd_kernel_compiled = cute.compile(
                 bwd_kernel,
