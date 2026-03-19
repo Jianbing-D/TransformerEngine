@@ -81,7 +81,7 @@ class BwdConfig:
 
     _bwd_kernel: typing.Dict[str, cute.kernel] = field(default_factory=dict)
     _vocab_per_split: int = field(
-        default=int(os.environ.get("LCE_BWD_VOCAB_SPLIT_SIZE", 512 * 6))
+        default=int(os.environ.get("LCE_BWD_VOCAB_SPLIT_SIZE", 512 * 7))
     )
     _backward_method: utils.BackwardMethodEnum = field(
         default=utils.BackwardMethodEnum.kDlogitsSplitN

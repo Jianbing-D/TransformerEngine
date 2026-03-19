@@ -51,7 +51,7 @@ class BwdPartialDlogits:
         self.REDUCTION: cutlass.Constexpr[cutlass.Int32] = cutlass.const_expr(reduction)
         self.acc_dtype = acc_dtype
         self.use_2cta_instrs = use_2cta_instrs
-        self.mma_tiler = (*mma_tiler_mn, 1)
+        self.mma_tiler = (*mma_tiler_mn, 1) if use_2cta_instrs else (mma_tiler_mn[0] // 2, mma_tiler_mn[1], 1)
         self.vocab_per_split = vocab_per_split
 
         self.cta_group = tcgen05.CtaGroup.TWO if self.use_2cta_instrs else tcgen05.CtaGroup.ONE
@@ -106,9 +106,11 @@ class BwdPartialDlogits:
         a_dtype: Type[cutlass.Numeric],
         b_dtype: Type[cutlass.Numeric],
     ):
-        num_acc_stage = 2
+        # make sure it takes all TMEM columns
+        num_acc_stage = SM100_TMEM_CAPACITY_COLUMNS // mma_tiler[1]
         num_ab_stage = 4
-        num_epi_stage_per_tile = 4
+        # make sure each stage process 64 elements.
+        num_epi_stage_per_tile = cute.ceil_div(mma_tiler[1], 64)
         num_write_stage = 3
         return num_acc_stage, num_ab_stage, num_epi_stage_per_tile, num_write_stage
 
@@ -174,14 +176,15 @@ class BwdPartialDlogits:
         tidx, _, _ = cute.arch.thread_idx()
 
         # CTA rank within cluster (0 or 1 for 2-CTA mode)
-        use_2cta_instrs = cute.size(tiled_mma.thr_id.shape) == 2
         cta_rank_in_cluster = cute.arch.make_warp_uniform(
             cute.arch.block_idx_in_cluster()
         )
         block_in_cluster_coord_vmnk = cluster_layout_vmnk.get_flat_coord(cta_rank_in_cluster)
         bidx, _, _ = cute.arch.block_idx()
         mma_tile_coord_v = bidx % cute.size(tiled_mma.thr_id.shape)
-        is_leader_cta = mma_tile_coord_v == 0
+        is_leader_cta = True
+        if cutlass.const_expr(self.use_2cta_instrs):
+            is_leader_cta = mma_tile_coord_v == 0
 
         # prefetch tma descriptors
         if warp_idx == self.load_warp_ids:
@@ -255,8 +258,9 @@ class BwdPartialDlogits:
                     )
                     cute.arch.mbarrier_init_fence()
 
-        # Cluster barrier sync after barrier init
-        pipeline.pipeline_init_arrive(cluster_shape_mn=cluster_layout_vmnk, is_relaxed=True)
+        if cutlass.const_expr(self.use_2cta_instrs):
+            # Cluster barrier sync after barrier init
+            pipeline.pipeline_init_arrive(cluster_shape_mn=cluster_layout_vmnk, is_relaxed=True)
 
         # -------- Fixed tensor partitions (tile-independent) ------------ #
         # swizzle o [(tileM, tileK), loopM, loopK, stage]
@@ -291,8 +295,9 @@ class BwdPartialDlogits:
         a_cta_layout = cute.make_layout(cute.slice_(cluster_layout_vmnk, (0, 0, None, 0)).shape)
         b_cta_layout = cute.make_layout(cute.slice_(cluster_layout_vmnk, (0, None, 0, 0)).shape)
 
-        # Cluster wait before TMEM alloc
-        pipeline.pipeline_init_wait(cluster_shape_mn=cluster_layout_vmnk)
+        if cutlass.const_expr(self.use_2cta_instrs):
+            # Cluster wait before TMEM alloc
+            pipeline.pipeline_init_wait(cluster_shape_mn=cluster_layout_vmnk)
 
         # ------ Allocate TMEM (once, reused across tiles) ------ #
         tmem_ptr = None
@@ -307,6 +312,7 @@ class BwdPartialDlogits:
                 self.acc_dtype, alignment=16, ptr_to_buffer_holding_addr=tmem_holding_buf
             )
         else:
+            self.cta_sync_barrier.arrive_and_wait()
             tmem_ptr = cute.make_ptr(self.acc_dtype, 0, mem_space=cute.AddressSpace.tmem, assumed_align=16)
 
         tmem_shape = (128, self.tmem_alloc_cols)
@@ -654,9 +660,10 @@ class BwdPartialDlogits:
                 work_tile = scheduler.get_current_work()
             cute.arch.cp_async_bulk_wait_group(0, read=True)
 
-        # make sure CGA is alive
-        cute.arch.cluster_arrive_relaxed()
-        cute.arch.cluster_wait()
+        if cutlass.const_expr(self.use_2cta_instrs):
+            # make sure CGA is alive
+            cute.arch.cluster_arrive_relaxed()
+            cute.arch.cluster_wait()
 
         if cutlass.const_expr(self.do_tmem_alloc):
             # ------ Deallocate TMEM ------ #
