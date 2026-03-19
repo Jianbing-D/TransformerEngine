@@ -17,6 +17,7 @@ This file is the **index**. All detailed content lives in `KNOWLEDGE/`.
 | [KNOWLEDGE/lessons_learned.md](KNOWLEDGE/lessons_learned.md) | L1–L14 lessons, Task-2 persistent scheduler insights, CuteDSL scoping rules, Task-4 optimization results, Task-5 bug fixes (PipelineAsync phase semantics, partition_C 2-CTA indexing), Task-6 cluster-aware grid sizing |
 | [KNOWLEDGE/task3_analysis.md](KNOWLEDGE/task3_analysis.md) | FLOP/bandwidth accounting, improvement options analysis, precision analysis, priority ranking |
 | [KNOWLEDGE/cutlass_gemm_examples.md](KNOWLEDGE/cutlass_gemm_examples.md) | CUTLASS Blackwell GEMM optimization techniques: persistent scheduler, TMA S2G store (R2S→fence→barrier→S2G pattern, `tma_partition` gotchas), 2-CTA MMA (full API reference: CTA rank, leader gating, `cluster_layout_vmnk`, pipeline `cta_layout_vmnk`, `tx_count` doubling, multicast masks, scheduler cluster awareness, TMEM sharing) |
+| [KNOWLEDGE/task8_bwd_bottleneck_analysis.md](KNOWLEDGE/task8_bwd_bottleneck_analysis.md) | Backward pass performance bottleneck analysis: 15.49ms breakdown (37% BwdPartialDlogits, 27% cuBLAS addmm, 27% matmul, 7% launches), 73% efficiency, bottleneck ranking, two-kernel vs fused-kernel alternatives, recommendations |
 
 ---
 
@@ -27,6 +28,8 @@ This file is the **index**. All detailed content lives in `KNOWLEDGE/`.
 **Current backward**: `kDlogitsSplitN` — 42 sequential splits, each with BwdPartialDlogits (2-CTA MMA, persistent scheduler, TMA S2G store) + cuBLAS + matmul.
 
 **BwdPartialDlogits optimized**: 162.43 μs → 136.86 μs (16% total: TMA S2G store + cluster-aware grid). 2-CTA MMA neutral (epilogue-bound). See L6–L14 in lessons_learned.md.
+
+**Backward bottleneck (Task-8)**: 15.49ms = 5.75ms BwdPartialDlogits + 4.2ms cuBLAS + 4.2ms matmul + 1ms launches. 73% SM efficiency. Top culprit: d_logits materialization + d_hidden repeated RMW = 12.8 GB eliminable traffic. Best fix: fused BwdDHiddenDWeight.
 
 **WIP**: `BwdDHiddenDWeight` in `bwd_dHdW.py` — fused backward kernel, not yet wired into entry point.
 

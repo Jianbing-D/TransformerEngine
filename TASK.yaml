@@ -111,3 +111,17 @@ Tasks:
     steps:
       - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
       - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+  - id: 8
+    name: "Analyze the performance bottleneck of the backward pass"
+    status: "completed"
+    description:
+      - the benchmark problem size is ((1, 4096), 129280, 7168), and current backward latency is 15.49ms.
+      - current design is to have 42 splits, and each split composes of a cuteDSL kernel for materializing dlogit, a GEMM kernel for accumulating of d_hidden in FP32 to ensure precision, and a GEMM kernel for calculating partial d_weight.
+      - backward pass can be found in ./transformer_engine/pytorch/cutedsl/linear_cross_entropy_entry.py in line 345
+      - help me analyze the backward algorithm, and identify the performance bottleneck.
+      - another design is to have two separate kernels to calculate the d_hidden and d_weight, respectively.
+      - which means no more materializing of d_logits tensor in the backward pass.
+    steps:
+      - read relevant knowledge and materials in depth, understand the backward algorithm and the performance bottleneck.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - finnaly, you shall produce a detailed analysis report to knowledge.

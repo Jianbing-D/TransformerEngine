@@ -1,7 +1,27 @@
 # Progress
 
+## Task-8: Analyze the Performance Bottleneck of the Backward Pass
+**Status: Completed**
+
+### PLAN-Task8: Backward Pass Performance Analysis
+
+#### Goal
+Analyze the backward algorithm for the benchmark problem ((1, 4096), 129280, 7168), identify where the 15.49 ms is spent, and compare the current kDlogitsSplitN approach against the alternative two-kernel design (no d_logits materialization).
+
+#### TODO-list
+- [x] Read and understand backward entry point, BwdPartialDlogits kernel, and existing analysis
+- [x] Compute per-split FLOP and bandwidth breakdown for all 3 operations
+- [x] Estimate per-kernel latency (BwdPartialDlogits, cuBLAS addmm, torch.matmul)
+- [x] Identify the dominant bottleneck (compute vs bandwidth vs launch overhead)
+- [x] Analyze the two-kernel alternative (d_hidden kernel + d_weight kernel)
+- [x] Analyze the single fused kernel alternative (BwdDHiddenDWeight)
+- [x] Write detailed analysis report to KNOWLEDGE/task8_bwd_bottleneck_analysis.md
+- [x] Update KNOWLEDGE.md index
+
+---
+
 ## Task-7: Move Tensor Partitions Outside While Loops in bwd_partial_dlogits.py
-**Status: In Progress**
+**Status: Completed**
 
 ### PLAN-Task7: Hoist Tensor Partitions
 
