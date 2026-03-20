@@ -131,6 +131,7 @@ class FwdMainLoop:
         )
         self.tmem_alloc_cols = self.num_acc_stage * self.mma_tiler[1]
         assert self.tmem_alloc_cols <= SM100_TMEM_CAPACITY_COLUMNS
+        self.do_tmem_alloc: bool = self.tmem_alloc_cols < SM100_TMEM_CAPACITY_COLUMNS
 
         self.cta_tile_shape_mnk = (
             self.mma_tiler[0] // cute.size(tiled_mma.thr_id.shape),
@@ -220,13 +221,14 @@ class FwdMainLoop:
             pipeline.PipelineUserType.Consumer, self.num_acc_stage
         )
 
-        tmem_dealloc_mbar_ptr = storage.tmem_dealloc_mbar_ptr.data_ptr()
-        if warp_idx == self.empty_warp_ids[0]:
-            with cute.arch.elect_one():
-                cute.arch.mbarrier_init(
-                    tmem_dealloc_mbar_ptr, self.threads_per_warp * len(self.epi_warp_ids)
-                )
-                cute.arch.mbarrier_init_fence()
+        if cutlass.const_expr(self.do_tmem_alloc):
+            tmem_dealloc_mbar_ptr = storage.tmem_dealloc_mbar_ptr.data_ptr()
+            if warp_idx == self.empty_warp_ids[0]:
+                with cute.arch.elect_one():
+                    cute.arch.mbarrier_init(
+                        tmem_dealloc_mbar_ptr, self.threads_per_warp * len(self.epi_warp_ids)
+                    )
+        cute.arch.mbarrier_init_fence()
 
         if cutlass.const_expr(self.use_2cta_instrs):
             pipeline.pipeline_init_arrive(cluster_shape_mn=cluster_layout_vmnk, is_relaxed=True)
@@ -291,16 +293,21 @@ class FwdMainLoop:
         if cutlass.const_expr(self.use_2cta_instrs):
             pipeline.pipeline_init_wait(cluster_shape_mn=cluster_layout_vmnk)
 
-        # Allocate TMEM
-        tmem_holding_buf = storage.tmem_holding_buf
-        if warp_idx == self.empty_warp_ids[0]:
-            cute.arch.alloc_tmem(
-                self.tmem_alloc_cols, tmem_holding_buf, is_two_cta=self.use_2cta_instrs
+        tmem_ptr = None
+        if cutlass.const_expr(self.do_tmem_alloc):
+            # Allocate TMEM
+            tmem_holding_buf = storage.tmem_holding_buf
+            if warp_idx == self.empty_warp_ids[0]:
+                cute.arch.alloc_tmem(
+                    self.tmem_alloc_cols, tmem_holding_buf, is_two_cta=self.use_2cta_instrs
+                )
+            self.cta_sync_barrier.arrive_and_wait()
+            tmem_ptr = cute.arch.retrieve_tmem_ptr(
+                self.acc_dtype, alignment=16, ptr_to_buffer_holding_addr=tmem_holding_buf
             )
-        self.cta_sync_barrier.arrive_and_wait()
-        tmem_ptr = cute.arch.retrieve_tmem_ptr(
-            self.acc_dtype, alignment=16, ptr_to_buffer_holding_addr=tmem_holding_buf
-        )
+        else:
+            self.cta_sync_barrier.arrive_and_wait()
+            tmem_ptr = cute.make_ptr(self.acc_dtype, 0, mem_space=cute.AddressSpace.tmem, assumed_align=16)
 
         # [(tileM, tileN), loopM, loopN]
         tmem_shape = (128, self.tmem_alloc_cols)
@@ -539,11 +546,12 @@ class FwdMainLoop:
             cute.arch.cluster_arrive_relaxed()
             cute.arch.cluster_wait()
 
-        # Dealloc TMEM
-        self.cta_sync_barrier.arrive_and_wait()
-        if warp_idx == self.empty_warp_ids[0]:
-            cute.arch.relinquish_tmem_alloc_permit()
-            cute.arch.dealloc_tmem(tmem_ptr, self.tmem_alloc_cols, is_two_cta=self.use_2cta_instrs)
+        if cutlass.const_expr(self.do_tmem_alloc):
+            # Dealloc TMEM
+            self.cta_sync_barrier.arrive_and_wait()
+            if warp_idx == self.empty_warp_ids[0]:
+                cute.arch.relinquish_tmem_alloc_permit()
+                cute.arch.dealloc_tmem(tmem_ptr, self.tmem_alloc_cols, is_two_cta=self.use_2cta_instrs)
 
     @staticmethod
     def _compute_grid(
