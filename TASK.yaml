@@ -125,3 +125,17 @@ Tasks:
       - read relevant knowledge and materials in depth, understand the backward algorithm and the performance bottleneck.
       - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
       - finnaly, you shall produce a detailed analysis report to knowledge.
+  - id: 9
+    name: "Apply 2-CTA MMA instruction to fwd_mainloop.py"
+    status: "completed"
+    description:
+      - understand how the bwd_partial_dlogits.py applies 2-CTA MMA instruction in depth.
+      - then apply the same technique to fwd_mainloop.py.
+    steps:
+      - read bwd_partial_dlogits.py in depth, understand how it applies 2-CTA MMA instruction.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+    permission:
+      - YOU MUST NOT execute git commit command in any way.
+      - You have access to all files in current directory.
+      - Don't ask for permission unless you want to make modifications.
