@@ -139,3 +139,19 @@ Tasks:
       - YOU MUST NOT execute git commit command in any way.
       - You have access to all files in current directory.
       - Don't ask for permission unless you want to make modifications.
+  - id: 10
+    name: "Apply static scheduler to fwd_mainloop.py"
+    status: "trail-and-quit"
+    description:
+      - understand how the bwd_partial_dlogits.py applies static scheduler in depth.
+      - then apply the same technique to fwd_mainloop.py.
+    steps:
+      - read bwd_partial_dlogits.py in depth, understand how it applies static scheduler.
+      - write a detailed plan to PROGRESS.md first, with TODO-list for each step. Then follow the plan to implement the task.
+      - when you implemented some code, use `make unit-test-1gpu` and `make unit-test-4gpu` to verify the correctness of the kernel.
+    permission:
+      - YOU MUST NOT execute git commit command in any way.
+      - You have access to all files in current directory.
+      - Don't ask for permission unless you want to make modifications.
+    conclusion:
+      - Use static scheduler is harder to find a better SM waves.

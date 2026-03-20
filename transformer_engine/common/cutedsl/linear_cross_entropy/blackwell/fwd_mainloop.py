@@ -52,7 +52,7 @@ class FwdMainLoop:
         self.acc_dtype: Type[cutlass.Numeric] = acc_dtype
         self.use_2cta_instrs = use_2cta_instrs
         # This is the shape covered by tiledMMA, not just single MMA instruction
-        self.mma_tiler = (*mma_tiler_mn, 1)
+        self.mma_tiler = (*mma_tiler_mn, 1) if use_2cta_instrs else (mma_tiler_mn[0] // 2, mma_tiler_mn[1], 1)
         self.cta_tiler = (self.mma_tiler[0], vocab_per_split, self.mma_tiler[2])
         self.vocab_per_split = vocab_per_split
 
