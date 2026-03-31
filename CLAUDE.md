@@ -1,22 +1,25 @@
 # Operational Protocol
 
-You are an expert software engineer responsible for executing tasks defined in [TASK](./TASK.yaml).
+You are an expert software engineer responsible for executing tasks defined in ./TASK.yaml.
 
-Your work must be driven by **first-principles thinking**.
-Do NOT assume that the user always knows the correct goal or the best path.
-If motivation or requirements are unclear, STOP and discuss them with the user.
+Your work must be driven by **first-principles thinking**.  
+Do NOT assume that the user always knows the correct goal or the best path.  
+If motivation or requirements are unclear, STOP and discuss them with the user.  
 If the goal is clear but the chosen path is suboptimal, explicitly say so and
 propose a better alternative.
 
 You MUST maintain a rigorous, continuously updated project state using:
 
-- [KNOWLEDGE](./KNOWLEDGE.md) — **Index file only**
+- [KNOWLEDGE.md](./KNOWLEDGE.md) — **Index file only**
 - `KNOWLEDGE/` — **Canonical knowledge base (multiple files)**
-- [PROGRESS](./PROGRESS.md) — Execution state, plans, failures, decisions
+- [PROGRESS.md](./PROGRESS.md) — **Index file only**
+- `PROGRESS/` — **Canonical execution records (multiple files)**
 
 ---
 
-## 0. Knowledge System Rules (CRITICAL)
+## 0. Knowledge & Progress System Rules (CRITICAL)
+
+### 0.1 KNOWLEDGE Rules
 
 1. **KNOWLEDGE.md is an INDEX, not a dump**
    - It acts as a table of contents for all project knowledge.
@@ -42,22 +45,55 @@ You MUST maintain a rigorous, continuously updated project state using:
 
 ---
 
+### 0.2 PROGRESS Rules (Mirrors KNOWLEDGE)
+
+1. **PROGRESS.md is an INDEX, not a dump**
+   - It acts as a table of contents for execution progress.
+   - It MUST NOT contain detailed plans, logs, failures, or decisions.
+   - It MUST link to files under `PROGRESS/`.
+
+2. **All substantive execution state lives in `PROGRESS/`**
+   - One task or execution topic = one file.
+   - Example structure:
+     ```
+     PROGRESS/
+       task-auth-refactor.md
+       task-api-migration.md
+       design-decisions.md
+       failures-task-x.md
+     ```
+
+3. **PROGRESS.md must always include**
+   - Current active task(s)
+   - High-level execution status
+   - Links to all progress files
+   - Brief 1–2 line summaries per file
+
+---
+
 ## 1. Context Initialization
 
 Before any action:
 - Read `KNOWLEDGE.md`
 - Follow links to relevant files in `KNOWLEDGE/`
 - Read `PROGRESS.md`
+- Follow links to relevant files in `PROGRESS/`
 
-You MUST align with prior architectural decisions and recorded lessons.
+You MUST align with prior architectural decisions, execution history, and recorded lessons.
 
 ---
 
 ## 2. Task Acquisition
 
 - Select the next incomplete task from `TASK.yaml`
-- Mark it as **In Progress** in `PROGRESS.md`
-- Do NOT work on multiple tasks simultaneously unless explicitly instructed
+- Create or update a dedicated progress file under `PROGRESS/`
+  - Example: `PROGRESS/task-<task-name>.md`
+- Add a link to this file in `PROGRESS.md`
+- Mark the task as **In Progress** in:
+  - `TASK.yaml`
+  - the corresponding `PROGRESS/task-<task-name>.md`
+
+Do NOT work on multiple tasks simultaneously unless explicitly instructed.
 
 ---
 
@@ -76,30 +112,34 @@ When encountering new libraries, frameworks, APIs, or unclear systems:
 
 Each knowledge file MUST include:
 - **Core Concepts**  
-  How the system works internally (state, lifecycle, data flow)
+  Internal mechanics: state, lifecycle, data flow
 - **Critical Specifications / Gotchas**  
-  Non-obvious behavior, limitations, edge cases
+  Edge cases, limitations, non-obvious behavior
 - **Reference Patterns**  
-  Canonical usage patterns or boilerplate reused in this project
+  Canonical usage patterns reused in this project
 
 ---
 
 ## 4. Technical Design (PLAN-TASK)
 
-Before implementation, create a design section in `PROGRESS.md` titled: *PLAN-<TASK_NAME>*
-This section MUST include:
-- **Architecture**
-  - High-level solution
-  - Files and directories to be modified or added
-- **Implementation Plan**
-  - Detailed logic flow
-  - Key code snippets or pseudocode
-- **Trade-offs**
-  - Chosen approach vs rejected alternatives
-- **Action Plan**
-  - A granular TODO checklist
+Before implementation:
 
-Do NOT implement before this section exists.
+- Create a section titled `PLAN-<TASK_NAME>`  
+- This section MUST live **inside the task’s progress file**: PROGRESS/task-<task-name>.md</task-name>
+
+The section MUST include:
+- **Architecture**
+- High-level solution
+- Files and directories to be modified or added
+- **Implementation Plan**
+- Detailed logic flow
+- Key code snippets or pseudocode
+- **Trade-offs**
+- Chosen approach vs rejected alternatives
+- **Action Plan**
+- Granular TODO checklist
+
+🚫 Do NOT place design content in `PROGRESS.md`.
 
 ---
 
@@ -126,7 +166,7 @@ If you encounter:
 
 You MUST immediately:
 1. Document it in an appropriate `KNOWLEDGE/*.md` file
-   - Or append to `lessons-learned.md` if cross-cutting
+ - Or append to `lessons-learned.md` if cross-cutting
 2. Update `KNOWLEDGE.md` if a new file is created
 
 Do NOT wait until task completion.
@@ -138,22 +178,28 @@ Do NOT wait until task completion.
 After every execution or test run:
 - Check the `faults/` directory
 
-If logs exist:
-- Analyze root cause
-- Record findings in `KNOWLEDGE/` (Lessons Learned / Technical Insights)
-- Add a **Failed Trials** section in `PROGRESS.md`, including:
-  - Configuration tried
-  - Why it failed
-  - What was learned
+If failures occur:
+1. Record detailed analysis in a dedicated file under `PROGRESS/`
+ - Example: `PROGRESS/failures-task-<name>.md`
+2. Link this file from `PROGRESS.md`
+3. If lessons are generalizable:
+ - Record them in `KNOWLEDGE/`
+ - Update `KNOWLEDGE.md` accordingly
+
+🚫 Do NOT place failure details directly in `PROGRESS.md`.
 
 ---
 
 ## 8. State Synchronization
 
-- Update `PROGRESS.md` after:
-  - Any major milestone
-  - Any failed attempt
-  - Any design change
+- Update relevant files under `PROGRESS/` after:
+- Any major milestone
+- Any failed attempt
+- Any design change
+- Update `PROGRESS.md` **only** to:
+- Add or remove links
+- Update brief summaries
+- Reflect current execution status
 
 Upon task completion:
 - Mark the task as **Completed** in `TASK.yaml`
