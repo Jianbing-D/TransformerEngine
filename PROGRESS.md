@@ -5,7 +5,7 @@ This file is the **index**. All detailed plans, TODO-lists, and execution record
 ---
 
 ## Current Status
-No active tasks. All tasks completed (Task-10 was trial-and-quit).
+**Active**: None — all tasks completed.
 
 ---
 
@@ -23,3 +23,4 @@ No active tasks. All tasks completed (Task-10 was trial-and-quit).
 | [PROGRESS/task-8-bwd-bottleneck-analysis.md](PROGRESS/task-8-bwd-bottleneck-analysis.md) | Completed | Backward 15.49ms breakdown: 37% BwdPartialDlogits, 27% cuBLAS, 27% matmul, 7% launches |
 | [PROGRESS/task-9-2cta-fwd-mainloop.md](PROGRESS/task-9-2cta-fwd-mainloop.md) | Completed | Applied 2-CTA MMA to forward kernel, all tests passing |
 | [PROGRESS/task-10-static-scheduler-fwd-v2.md](PROGRESS/task-10-static-scheduler-fwd-v2.md) | Trial-and-Quit | Static scheduler in fwd_mainloop — abandoned, no SM wave improvement found |
+| [PROGRESS/task-11-add-entropy.md](PROGRESS/task-11-add-entropy.md) | Completed | Add entropy calculation to LCE fusion — 2.5% fwd overhead, 4.5% total overhead, all tests passing |

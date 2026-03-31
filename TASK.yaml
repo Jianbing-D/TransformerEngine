@@ -155,3 +155,23 @@ Tasks:
       - Don't ask for permission unless you want to make modifications.
     conclusion:
       - Use static scheduler is harder to find a better SM waves.
+  - id: 11
+    name: "Add entropy calculation to existing implementation"
+    status: "completed"
+    material:
+      - ./build/lce.py contains the concepts illustration with vanilla torch APIs.
+      - ./build/kernels.py contains the OpenAI Triton implementation with entropy calculation.
+    requirements:
+      - Now that I already have an efficient cuteDSL kernels for linear-cross-entropy fusion, I want to add entropy calculation to the existing implementation.
+      - just add a new option to the existing torch inference function.
+      - when it needs different kernels, add a separate file for that kernel.
+      - make sure your implementation is efficient and well-optimized.
+      - in my understanding, adding entropy calculation would get similar performance as the existing implementation.
+      - you must make sure your implementation is correct and well-optimized. use NCU to profile and analyze the performance.
+    steps:
+      - read materials and requirements in depth, understand how the entropy calculation works.
+      - then derive the entropy calculation algorithm, think about how it could be fused with other calculation steps.
+      - draw a diagram to illustrate your fusion strategy, maybe include data-flow charts. 
+      - write a detailed plan to progress, with TODO-list for each step.
+      - then stop there, waiting for my review.
+      - when I approve the plan, follow the plan to implement the task.

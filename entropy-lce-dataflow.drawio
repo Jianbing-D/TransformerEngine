@@ -1,0 +1,404 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- ===================== TITLE ===================== -->
+    <mxCell id="title" value="Linear-Cross-Entropy Fusion: Existing vs Entropy-Augmented (Copy-Not-Modify)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="100" y="10" width="1400" height="40" as="geometry"/>
+    </mxCell>
+
+    <!-- ===================== LEGEND ===================== -->
+    <mxCell id="legend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="1300" y="60" width="230" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_title" value="Legend" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1315" y="62" width="80" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_blue" value="" style="rounded=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+      <mxGeometry x="1315" y="87" width="18" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_blue_t" value="Existing (untouched)" style="text;html=1;align=left;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1343" y="87" width="160" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_green" value="" style="rounded=1;fillColor=#D5E8D4;strokeColor=#2E7D32;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="1315" y="112" width="18" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_green_t" value="New file (copy + entropy)" style="text;html=1;align=left;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1343" y="112" width="170" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_orange" value="" style="rounded=1;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="1315" y="137" width="18" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_orange_t" value="Modified (torch interface only)" style="text;html=1;align=left;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1343" y="137" width="190" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_grey" value="" style="rounded=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="1315" y="162" width="18" height="18" as="geometry"/>
+    </mxCell>
+    <mxCell id="leg_grey_t" value="Existing (for comparison)" style="text;html=1;align=left;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1343" y="162" width="170" height="18" as="geometry"/>
+    </mxCell>
+
+    <!-- ===================== LEFT COLUMN: EXISTING LCE ===================== -->
+    <mxCell id="left_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;dashed=1;opacity=30;" vertex="1" parent="1">
+      <mxGeometry x="20" y="60" width="720" height="1090" as="geometry"/>
+    </mxCell>
+    <mxCell id="left_title" value="EXISTING LCE (untouched, return_entropy=False)" style="text;html=1;align=center;fontSize=16;fontStyle=5;fontColor=#616161;" vertex="1" parent="1">
+      <mxGeometry x="120" y="65" width="500" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Inputs -->
+    <mxCell id="L_hidden" value="hidden [T, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="40" y="110" width="120" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_weight" value="weight [V, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="180" y="110" width="120" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_labels" value="labels [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="320" y="110" width="120" height="32" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: FWD HEADER -->
+    <mxCell id="L_fwd_hdr" value="FORWARD PASS" style="text;html=1;align=left;fontSize=13;fontStyle=5;fontColor=#1A237E;" vertex="1" parent="1">
+      <mxGeometry x="40" y="155" width="150" height="22" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Stage 1 - FwdMainLoop -->
+    <mxCell id="L_s1_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#6C8EBF;" vertex="1" parent="1">
+      <mxGeometry x="40" y="180" width="550" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_s1_title" value="fwd_mainloop.py :: FwdMainLoop" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#1565C0;" vertex="1" parent="1">
+      <mxGeometry x="50" y="183" width="350" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_s1_file" value="(cuteDSL kernel)" style="text;html=1;align=left;fontSize=9;fontColor=#90A4AE;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="50" y="200" width="150" height="16" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_gemm" value="GEMM per vocab split: logits = hidden @ weight_split.T" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="220" width="300" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_softmax" value="Epilogue: online softmax (_max, _accu) + label matching (_logprobs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="258" width="380" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="eL_g_s" edge="1" parent="1" source="L_gemm" target="L_softmax" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#90CAF9;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Split outputs -->
+    <mxCell id="L_omax" value="_max [T, S]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="40" y="325" width="100" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_oaccu" value="_accu [T, S]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="160" y="325" width="100" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_ologp" value="_logprobs [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="280" y="325" width="100" height="28" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Stage 2 - Epilogue -->
+    <mxCell id="L_s2_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#6C8EBF;" vertex="1" parent="1">
+      <mxGeometry x="40" y="375" width="550" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_s2_title" value="linear_cross_entropy.py :: forward_dp_epilogue" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#1565C0;" vertex="1" parent="1">
+      <mxGeometry x="50" y="378" width="400" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_s2_file" value="(Triton kernel)" style="text;html=1;align=left;fontSize=9;fontColor=#90A4AE;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="50" y="395" width="150" height="16" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_reduce" value="Reduce _max, _accu across splits. LSE = log(accu) + max. logprobs = LSE - logit_at_label." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="415" width="500" height="28" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Epilogue outputs + save -->
+    <mxCell id="L_out_lp" value="logprobs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="40" y="475" width="100" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_out_lse" value="accumulate = LSE [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="160" y="475" width="140" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_save" value="ctx.save: hidden, weight, labels, LSE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#6C8EBF;dashed=1;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="40" y="520" width="300" height="24" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: BWD -->
+    <mxCell id="L_bwd_hdr" value="BACKWARD PASS (per vocab split)" style="text;html=1;align=left;fontSize=13;fontStyle=5;fontColor=#B71C1C;" vertex="1" parent="1">
+      <mxGeometry x="40" y="560" width="350" height="22" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Bwd Stage 1 -->
+    <mxCell id="L_bs1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#6C8EBF;" vertex="1" parent="1">
+      <mxGeometry x="40" y="590" width="550" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_bs1_title" value="bwd_partial_dlogits.py :: BwdPartialDlogits" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#1565C0;" vertex="1" parent="1">
+      <mxGeometry x="50" y="593" width="400" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_bs1_file" value="(cuteDSL kernel)" style="text;html=1;align=left;fontSize=9;fontColor=#90A4AE;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="50" y="610" width="150" height="16" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_bgemm" value="Recompute logits via GEMM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="630" width="170" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_bdl_calc" value="d_logits = dlogprobs * (exp(z-LSE) - one_hot)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="250" y="630" width="300" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="eL_bg_bd" edge="1" parent="1" source="L_bgemm" target="L_bdl_calc" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#90CAF9;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Bwd Stages 2 & 3 -->
+    <mxCell id="L_dlogits" value="d_logits_partial [T, V_split]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="200" y="710" width="180" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_bs2" value="cuBLAS addmm: d_hidden += d_logits @ W" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="40" y="760" width="250" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_bs3" value="torch.matmul: d_weight = d_logits.T @ H" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="310" y="760" width="250" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="eL_dl_s2" edge="1" parent="1" source="L_dlogits" target="L_bs2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#90CAF9;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eL_dl_s3" edge="1" parent="1" source="L_dlogits" target="L_bs3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#90CAF9;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Final outputs -->
+    <mxCell id="L_dh" value="d_hidden [T, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="815" width="130" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="L_dw" value="d_weight [V, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="370" y="815" width="130" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="eL_s2_dh" edge="1" parent="1" source="L_bs2" target="L_dh" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6C8EBF;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eL_s3_dw" edge="1" parent="1" source="L_bs3" target="L_dw" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6C8EBF;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Left: Return -->
+    <mxCell id="L_return" value="return logprobs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="200" y="870" width="180" height="28" as="geometry"/>
+    </mxCell>
+
+    <!-- ===================== RIGHT COLUMN: ENTROPY-AUGMENTED LCE ===================== -->
+    <mxCell id="right_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#82B366;dashed=1;opacity=20;" vertex="1" parent="1">
+      <mxGeometry x="770" y="60" width="760" height="1090" as="geometry"/>
+    </mxCell>
+    <mxCell id="right_title" value="ENTROPY-AUGMENTED LCE (return_entropy=True)" style="text;html=1;align=center;fontSize=16;fontStyle=5;fontColor=#2E7D32;" vertex="1" parent="1">
+      <mxGeometry x="870" y="65" width="550" height="30" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Inputs (same) -->
+    <mxCell id="R_hidden" value="hidden [T, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="790" y="110" width="120" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_weight" value="weight [V, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="930" y="110" width="120" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_labels" value="labels [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1070" y="110" width="120" height="32" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: FWD -->
+    <mxCell id="R_fwd_hdr" value="FORWARD PASS" style="text;html=1;align=left;fontSize=13;fontStyle=5;fontColor=#1A237E;" vertex="1" parent="1">
+      <mxGeometry x="790" y="155" width="150" height="22" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Stage 1 - FwdMainLoopEntropy (NEW FILE) -->
+    <mxCell id="R_s1_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="790" y="180" width="590" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_s1_title" value="fwd_mainloop_entropy.py :: FwdMainLoopEntropy" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#2E7D32;" vertex="1" parent="1">
+      <mxGeometry x="800" y="183" width="450" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_s1_file" value="(NEW file, copy of fwd_mainloop.py)" style="text;html=1;align=left;fontSize=9;fontColor=#2E7D32;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="800" y="200" width="250" height="16" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_gemm" value="GEMM per vocab split (same as existing)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="810" y="220" width="260" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_softmax" value="Epilogue: online softmax + label matching (same)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="810" y="255" width="300" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_entropy_b" value="+ _entropy_b = coeff*_eb + z*exp(z-max)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="810" y="278" width="300" height="24" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Split outputs -->
+    <mxCell id="R_omax" value="_max [T, S]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="790" y="325" width="95" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_oaccu" value="_accu [T, S]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="900" y="325" width="95" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_oeb" value="_entropy_b [T, S]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="325" width="115" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_ologp" value="_logprobs [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1140" y="325" width="95" height="28" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Stage 2 - Epilogue (NEW FILE) -->
+    <mxCell id="R_s2_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="790" y="375" width="590" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_s2_title" value="linear_cross_entropy_entropy.py :: forward_dp_epilogue_entropy" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#2E7D32;" vertex="1" parent="1">
+      <mxGeometry x="800" y="378" width="500" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_s2_file" value="(NEW file, copy of Triton epilogues)" style="text;html=1;align=left;fontSize=9;fontColor=#2E7D32;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="800" y="395" width="250" height="16" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_reduce" value="Same reduction + reduce _entropy_b. entropy_b = eb/accu. entropy = LSE - entropy_b." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="810" y="415" width="540" height="28" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Epilogue outputs + save -->
+    <mxCell id="R_out_lp" value="logprobs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="790" y="475" width="90" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_out_ent" value="entropy [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="900" y="475" width="90" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_out_lse" value="LSE [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="475" width="90" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_out_eb" value="entropy_b [T]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="1120" y="475" width="100" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_save" value="ctx.save: hidden, weight, labels, LSE, &lt;b&gt;entropy_b&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;dashed=1;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="790" y="520" width="350" height="24" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: BWD -->
+    <mxCell id="R_bwd_hdr" value="BACKWARD PASS (per vocab split)" style="text;html=1;align=left;fontSize=13;fontStyle=5;fontColor=#B71C1C;" vertex="1" parent="1">
+      <mxGeometry x="790" y="560" width="350" height="22" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Bwd Stage 1 (NEW FILE) -->
+    <mxCell id="R_bs1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="790" y="590" width="590" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bs1_title" value="bwd_partial_dlogits_entropy.py :: BwdPartialDlogitsEntropy" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#2E7D32;" vertex="1" parent="1">
+      <mxGeometry x="800" y="593" width="500" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bs1_file" value="(NEW file, copy of bwd_partial_dlogits.py)" style="text;html=1;align=left;fontSize=9;fontColor=#2E7D32;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="800" y="610" width="300" height="16" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bgemm" value="Recompute logits (same)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="810" y="630" width="160" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bce" value="CE: dlogprobs*(softmax - 1_hot)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="990" y="630" width="195" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bent" value="+ d_entropy*(-softmax)*(z - entropy_b)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="990" y="660" width="250" height="24" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR_bg_bd" edge="1" parent="1" source="R_bgemm" target="R_bce" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#90CAF9;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Bwd Stages 2 & 3 (unchanged) -->
+    <mxCell id="R_dlogits" value="d_logits_partial [T, V_split]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=10;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="950" y="710" width="180" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bs2" value="cuBLAS addmm (unchanged)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="790" y="760" width="250" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_bs3" value="torch.matmul (unchanged)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="1080" y="760" width="250" height="32" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR_dl_s2" edge="1" parent="1" source="R_dlogits" target="R_bs2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#666666;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR_dl_s3" edge="1" parent="1" source="R_dlogits" target="R_bs3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#666666;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Final outputs -->
+    <mxCell id="R_dh" value="d_hidden [T, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="840" y="815" width="130" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="R_dw" value="d_weight [V, D]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1140" y="815" width="130" height="28" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR_s2_dh" edge="1" parent="1" source="R_bs2" target="R_dh" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6C8EBF;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eR_s3_dw" edge="1" parent="1" source="R_bs3" target="R_dw" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6C8EBF;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Right: Return -->
+    <mxCell id="R_return" value="return (logprobs, entropy)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=11;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="930" y="870" width="210" height="28" as="geometry"/>
+    </mxCell>
+
+    <!-- ===================== BOTTOM: TORCH INTERFACE + DISPATCH ===================== -->
+    <mxCell id="torch_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1180" width="1510" height="200" as="geometry"/>
+    </mxCell>
+    <mxCell id="torch_title" value="pytorch/linear_cross_entropy.py  (ONLY FILE MODIFIED)" style="text;html=1;align=center;fontSize=16;fontStyle=5;fontColor=#E65100;" vertex="1" parent="1">
+      <mxGeometry x="400" y="1185" width="750" height="25" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="api_fn" value="linear_cross_entropy(hidden, weight, labels, ..., &lt;b&gt;return_entropy=False&lt;/b&gt;)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontSize=12;fontStyle=0;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="350" y="1220" width="550" height="30" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="dispatch_false" value="return_entropy=False" style="text;html=1;align=center;fontSize=11;fontStyle=2;fontColor=#1565C0;" vertex="1" parent="1">
+      <mxGeometry x="200" y="1265" width="160" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="dispatch_true" value="return_entropy=True" style="text;html=1;align=center;fontSize=11;fontStyle=2;fontColor=#2E7D32;" vertex="1" parent="1">
+      <mxGeometry x="900" y="1265" width="160" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="cls_existing" value="LinearCrossEntropy&lt;br&gt;(existing autograd Function)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="120" y="1290" width="220" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="cls_entropy" value="LinearCrossEntropyWithEntropy&lt;br&gt;(NEW autograd Function)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#2E7D32;fontSize=11;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="830" y="1290" width="250" height="40" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="impl_existing" value="Calls existing:&lt;br&gt;entry.forward() / entry.backward()&lt;br&gt;--&gt; FwdMainLoop, BwdPartialDlogits&lt;br&gt;--&gt; Triton epilogues" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#6C8EBF;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1340" width="300" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="impl_entropy" value="Calls new:&lt;br&gt;entropy_entry.forward_entropy() / backward_entropy()&lt;br&gt;--&gt; FwdMainLoopEntropy, BwdPartialDlogitsEntropy&lt;br&gt;--&gt; entropy Triton epilogues" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=10;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="790" y="1340" width="350" height="30" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="eD_fn_false" edge="1" parent="1" source="api_fn" target="cls_existing" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#1565C0;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eD_fn_true" edge="1" parent="1" source="api_fn" target="cls_entropy" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#2E7D32;strokeWidth=2;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eD_cls_impl" edge="1" parent="1" source="cls_existing" target="impl_existing" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6C8EBF;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eD_cls_impl2" edge="1" parent="1" source="cls_entropy" target="impl_entropy" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#2E7D32;strokeWidth=2;">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Math box bottom-right -->
+    <mxCell id="math_box2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F9A825;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="20" y="1400" width="1510" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="math_t2" value="Key Formulas" style="text;html=1;align=center;fontSize=14;fontStyle=5;fontColor=#E65100;" vertex="1" parent="1">
+      <mxGeometry x="650" y="1403" width="250" height="22" as="geometry"/>
+    </mxCell>
+    <mxCell id="math_fwd2" value="&lt;div style='text-align:left;font-size:11px;'&gt;&lt;b&gt;Forward:&lt;/b&gt; entropy_b = sum(z*exp(z-max)) / sum(exp(z-max)) = E_p[z].  entropy = LSE - entropy_b = H(p).&lt;br&gt;Uses same online max-correction as _accu. Adds 1 FMA per element (z * exp, reuses existing exp).&lt;/div&gt;" style="text;html=1;fillColor=#FFF8E1;strokeColor=none;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="35" y="1430" width="700" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="math_bwd2" value="&lt;div style='text-align:left;font-size:11px;'&gt;&lt;b&gt;Backward:&lt;/b&gt; dH/dz_v = -softmax_v * (z_v - entropy_b).&lt;br&gt;d_logits = dlogprobs*(softmax - 1_hot) + d_entropy*(-softmax)*(z - entropy_b). Adds 2 FMAs per element.&lt;/div&gt;" style="text;html=1;fillColor=#FFF8E1;strokeColor=none;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="35" y="1475" width="700" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="math_perf2" value="&lt;div style='text-align:left;font-size:11px;'&gt;&lt;b&gt;Performance:&lt;/b&gt; Both kernels are GEMM-bound. Epilogue additions are negligible (&amp;lt;5% est.).&lt;br&gt;When return_entropy=False (default), existing code path is used: zero overhead, zero risk.&lt;/div&gt;" style="text;html=1;fillColor=#E8F5E9;strokeColor=none;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="800" y="1430" width="700" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="math_files2" value="&lt;div style='text-align:left;font-size:11px;'&gt;&lt;b&gt;New files (4):&lt;/b&gt; fwd_mainloop_entropy.py, bwd_partial_dlogits_entropy.py, linear_cross_entropy_entropy.py (triton), linear_cross_entropy_entropy_entry.py&lt;br&gt;&lt;b&gt;Modified (1):&lt;/b&gt; pytorch/linear_cross_entropy.py (torch interface dispatch only)&lt;/div&gt;" style="text;html=1;fillColor=#F3E5F5;strokeColor=none;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="800" y="1475" width="700" height="40" as="geometry"/>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

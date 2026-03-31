@@ -31,8 +31,11 @@ class Implementation:
 
         if cc[0] == 10:
             from transformer_engine.pytorch.cutedsl import linear_cross_entropy_entry as impl
+            from transformer_engine.pytorch.cutedsl import linear_cross_entropy_entropy_entry as entropy_impl
             self.forward_func: typing.Callable[..., typing.Any] = impl.forward
             self.backward_func: typing.Callable[..., typing.Any] = impl.backward
+            self.forward_entropy_func: typing.Callable[..., typing.Any] = entropy_impl.forward
+            self.backward_entropy_func: typing.Callable[..., typing.Any] = entropy_impl.backward
         else:
             raise ValueError(f"Unsupported architecture: {cc[0]}. Shall be delegated to Triton")
 
@@ -221,6 +224,78 @@ class LinearCrossEntropy(torch.autograd.Function):
         return d_hidden, d_weight, None, None, None, None, None
 
 
+class LinearCrossEntropyWithEntropy(torch.autograd.Function):
+    """
+    Custom autograd function for linear cross entropy with entropy calculation.
+    Returns (logprobs, entropy) in forward pass.
+    Accepts (dlogprobs, dentropy) in backward pass.
+    """
+
+    @staticmethod
+    def forward(
+        ctx,
+        hidden: torch.Tensor,
+        weight: torch.Tensor,
+        labels: torch.Tensor,
+        tp_group: typing.Optional[torch.distributed.ProcessGroup] = None,
+        reduction: typing.Literal["none", "sum", "mean"] = "mean",
+        ignore_index: int = -100,
+        sequence_parallel: bool = False,
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+        with torch.cuda.nvtx.range("LinearCrossEntropyWithEntropy-forward"):
+            (
+                logprobs,
+                entropy,
+                entropy_b,
+                _acc,
+                _num_valid_tokens,
+                tp_rank,
+                tp_world_size,
+                global_hidden,
+            ) = _get_impl().forward_entropy_func(
+                hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+            )
+            ctx.save_for_backward(
+                global_hidden, weight, labels, _acc, entropy_b, _num_valid_tokens
+            )
+            ctx.tp_group = tp_group
+            ctx.ignore_index = ignore_index
+            ctx.reduction = reduction
+            ctx.tp_rank = tp_rank
+            ctx.tp_world_size = tp_world_size
+            ctx.sequence_parallel = sequence_parallel
+
+        return logprobs, entropy
+
+    @staticmethod
+    def backward(
+        ctx, dlogprobs: torch.Tensor, dentropy: torch.Tensor
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor, None, None, None, None, None]:
+        with torch.cuda.nvtx.range("LinearCrossEntropyWithEntropy-backward"):
+            (
+                global_hidden, weight, labels, _accu, entropy_b, _num_valid_tokens
+            ) = ctx.saved_tensors
+
+            d_hidden, d_weight = _get_impl().backward_entropy_func(
+                dlogprobs,
+                dentropy,
+                global_hidden,
+                weight,
+                labels,
+                _accu,
+                entropy_b,
+                _num_valid_tokens,
+                ctx.reduction,
+                ctx.ignore_index,
+                ctx.tp_group,
+                ctx.tp_rank,
+                ctx.tp_world_size,
+                ctx.sequence_parallel,
+            )
+
+        return d_hidden, d_weight, None, None, None, None, None
+
+
 def linear_cross_entropy(
     hidden: torch.Tensor,
     weight: torch.Tensor,
@@ -229,12 +304,23 @@ def linear_cross_entropy(
     reduction: typing.Literal["none", "sum", "mean"] = "mean",
     ignore_index: int = -100,
     sequence_parallel: bool = False,
-) -> torch.Tensor:
+    return_entropy: bool = False,
+) -> typing.Union[torch.Tensor, typing.Tuple[torch.Tensor, torch.Tensor]]:
     """
-    helper function for linear cross entropy.
+    Helper function for linear cross entropy.
+
+    Args:
+        return_entropy: If True, returns (logprobs, entropy) tuple.
+                       If False (default), returns logprobs only.
     """
-    _impl = LinearCrossEntropy.apply
-    return _impl(hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel)
+    if return_entropy:
+        return LinearCrossEntropyWithEntropy.apply(
+            hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+        )
+    else:
+        return LinearCrossEntropy.apply(
+            hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+        )
 
 
-__all__ = ["linear_cross_entropy", "LinearCrossEntropy"]
+__all__ = ["linear_cross_entropy", "LinearCrossEntropy", "LinearCrossEntropyWithEntropy"]
