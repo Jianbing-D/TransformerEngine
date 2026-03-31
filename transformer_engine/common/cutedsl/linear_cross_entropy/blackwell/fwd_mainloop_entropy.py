@@ -159,6 +159,7 @@ class FwdMainLoopEntropy:
         problem_mnk: Tuple[int, int, int],
         ignore_index: cutlass.Int64,
         rank: cutlass.Int32,
+        inv_temperature: cutlass.Float32,
     ):
         """
         The forward kernel for the mainloop.
@@ -521,18 +522,19 @@ class FwdMainLoopEntropy:
                             + idx
                         )
                         if (block_vocab_left_idx + local_position) < block_vocab_right_idx:
+                            scaled_logit = tTMEM_load_rAcc[idx] * inv_temperature
                             _max_old = tR2GrMax[0]
-                            tR2GrMax[0] = cute.arch.fmax(tR2GrMax[0], tTMEM_load_rAcc[idx])
-                            exp_logits = cute.exp(tTMEM_load_rAcc[idx] - tR2GrMax[0])
+                            tR2GrMax[0] = cute.arch.fmax(tR2GrMax[0], scaled_logit)
+                            exp_logits = cute.exp(scaled_logit - tR2GrMax[0])
                             coeff = cute.exp(_max_old - tR2GrMax[0])
                             tR2GrAccu[0] = coeff * tR2GrAccu[0] + exp_logits
-                            tR2GrEntropyB[0] = coeff * tR2GrEntropyB[0] + tTMEM_load_rAcc[idx] * exp_logits
+                            tR2GrEntropyB[0] = coeff * tR2GrEntropyB[0] + scaled_logit * exp_logits
 
                             position: cutlass.Int64 = (
                                 rank * problem_mnk[1] + pidn * self.vocab_per_split + local_position
                             )
                             mask: cutlass.Boolean = valid_mask and (position == tLabelsrLabels[0])
-                            tR2GrLogprobs[0] += mask * tTMEM_load_rAcc[idx]
+                            tR2GrLogprobs[0] += mask * scaled_logit
 
                 mma_pipeline.consumer_release(mma_consumer_state)
                 mma_consumer_state.advance()
@@ -592,6 +594,7 @@ class FwdMainLoopEntropy:
         _entropy_b: cute.Tensor,
         ignore_index: cutlass.Int64,
         rank: cutlass.Int32,
+        inv_temperature: cutlass.Float32,
         stream: cuda.CUstream,
     ) -> None:
         a_dtype: Type[cutlass.Numeric] = hidden.element_type
@@ -719,6 +722,7 @@ class FwdMainLoopEntropy:
             problem_mnk,
             ignore_index,
             rank,
+            inv_temperature,
         ).launch(
             grid=grid,
             block=[self.threads_per_cta, 1, 1],

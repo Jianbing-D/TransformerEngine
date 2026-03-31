@@ -75,6 +75,7 @@ class LinearCrossEntropy(torch.autograd.Function):
         reduction: typing.Literal["none", "sum", "mean"] = "mean",
         ignore_index: int = -100,
         sequence_parallel: bool = False,
+        temperature: float = 1.0,
     ) -> torch.Tensor:
         """
         The forward pass of the Linear Cross Entropy.
@@ -170,7 +171,7 @@ class LinearCrossEntropy(torch.autograd.Function):
                 tp_world_size,
                 global_hidden,
             ) = _get_impl().forward_func(
-                hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+                hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel, temperature=temperature
             )
             ctx.save_for_backward(global_hidden, weight, labels, _acc, _num_valid_tokens)
             ctx.tp_group = tp_group
@@ -179,13 +180,14 @@ class LinearCrossEntropy(torch.autograd.Function):
             ctx.tp_rank = tp_rank
             ctx.tp_world_size = tp_world_size
             ctx.sequence_parallel = sequence_parallel
+            ctx.temperature = temperature
 
         return logprobs
 
     @staticmethod
     def backward(
         ctx, dlogprobs: torch.Tensor
-    ) -> typing.Tuple[torch.Tensor, torch.Tensor, None, None, None, None, None]:
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor, None, None, None, None, None, None]:
         """
         The backward pass of the Linear Cross Entropy.
         Args:
@@ -205,6 +207,7 @@ class LinearCrossEntropy(torch.autograd.Function):
             tp_rank = ctx.tp_rank
             tp_world_size = ctx.tp_world_size
             sequence_parallel = ctx.sequence_parallel
+            temperature = ctx.temperature
 
             d_hidden, d_weight = _get_impl().backward_func(
                 dlogprobs,
@@ -219,9 +222,10 @@ class LinearCrossEntropy(torch.autograd.Function):
                 tp_rank,
                 tp_world_size,
                 sequence_parallel,
+                temperature=temperature,
             )
 
-        return d_hidden, d_weight, None, None, None, None, None
+        return d_hidden, d_weight, None, None, None, None, None, None
 
 
 class LinearCrossEntropyWithEntropy(torch.autograd.Function):
@@ -241,6 +245,7 @@ class LinearCrossEntropyWithEntropy(torch.autograd.Function):
         reduction: typing.Literal["none", "sum", "mean"] = "mean",
         ignore_index: int = -100,
         sequence_parallel: bool = False,
+        temperature: float = 1.0,
     ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         with torch.cuda.nvtx.range("LinearCrossEntropyWithEntropy-forward"):
             (
@@ -253,7 +258,7 @@ class LinearCrossEntropyWithEntropy(torch.autograd.Function):
                 tp_world_size,
                 global_hidden,
             ) = _get_impl().forward_entropy_func(
-                hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+                hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel, temperature=temperature
             )
             ctx.save_for_backward(
                 global_hidden, weight, labels, _acc, entropy_b, _num_valid_tokens
@@ -264,17 +269,20 @@ class LinearCrossEntropyWithEntropy(torch.autograd.Function):
             ctx.tp_rank = tp_rank
             ctx.tp_world_size = tp_world_size
             ctx.sequence_parallel = sequence_parallel
+            ctx.temperature = temperature
 
         return logprobs, entropy
 
     @staticmethod
     def backward(
         ctx, dlogprobs: torch.Tensor, dentropy: torch.Tensor
-    ) -> typing.Tuple[torch.Tensor, torch.Tensor, None, None, None, None, None]:
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor, None, None, None, None, None, None]:
         with torch.cuda.nvtx.range("LinearCrossEntropyWithEntropy-backward"):
             (
                 global_hidden, weight, labels, _accu, entropy_b, _num_valid_tokens
             ) = ctx.saved_tensors
+
+            temperature = ctx.temperature
 
             d_hidden, d_weight = _get_impl().backward_entropy_func(
                 dlogprobs,
@@ -291,9 +299,10 @@ class LinearCrossEntropyWithEntropy(torch.autograd.Function):
                 ctx.tp_rank,
                 ctx.tp_world_size,
                 ctx.sequence_parallel,
+                temperature=temperature,
             )
 
-        return d_hidden, d_weight, None, None, None, None, None
+        return d_hidden, d_weight, None, None, None, None, None, None
 
 
 def linear_cross_entropy(
@@ -305,6 +314,7 @@ def linear_cross_entropy(
     ignore_index: int = -100,
     sequence_parallel: bool = False,
     return_entropy: bool = False,
+    temperature: float = 1.0,
 ) -> typing.Union[torch.Tensor, typing.Tuple[torch.Tensor, torch.Tensor]]:
     """
     Helper function for linear cross entropy.
@@ -315,11 +325,11 @@ def linear_cross_entropy(
     """
     if return_entropy:
         return LinearCrossEntropyWithEntropy.apply(
-            hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+            hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel, temperature
         )
     else:
         return LinearCrossEntropy.apply(
-            hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel
+            hidden, weight, labels, tp_group, reduction, ignore_index, sequence_parallel, temperature
         )
 
 

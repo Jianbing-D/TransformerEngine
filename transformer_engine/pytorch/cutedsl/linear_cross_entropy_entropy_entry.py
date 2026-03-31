@@ -110,6 +110,7 @@ def forward(
     reduction: typing.Literal["none", "sum", "mean"] = "mean",
     ignore_index: int = -100,
     sequence_parallel: bool = False,
+    temperature: float = 1.0,
 ) -> typing.Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, int, int, torch.Tensor
 ]:
@@ -132,6 +133,8 @@ def forward(
         hidden.dim() == 3 and labels.dim() == 2
     )
     assert hidden.is_contiguous() and weight.is_contiguous() and labels.is_contiguous()
+
+    inv_temperature = 1.0 / temperature
 
     hidden_view = hidden.view(-1, hidden.shape[-1])
     labels_view = labels.view(-1)
@@ -243,6 +246,7 @@ def forward(
             _entropy_b_packed,
             ignore_index,
             tp_rank,
+            inv_temperature,
             cuda_stream,
         )
         _get_fwd_config()._fwd_mainloop_kernels[key] = fwd_mainloop_compiled_kernel
@@ -258,6 +262,7 @@ def forward(
         _entropy_b_packed,
         ignore_index,
         tp_rank,
+        inv_temperature,
         cuda_stream,
     )
 
@@ -388,6 +393,7 @@ def backward(
     tp_rank: int = 0,
     tp_world_size: int = 1,
     sequence_parallel: bool = False,
+    temperature: float = 1.0,
 ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
     """
     backward host function with entropy gradient
@@ -415,6 +421,8 @@ def backward(
         and num_valid_tokens.is_cuda
         and num_valid_tokens.dtype == torch.int64
     )
+
+    inv_temperature = 1.0 / temperature
 
     d_hidden = torch.empty_like(global_hidden, dtype=torch.float32)
     d_weight = torch.empty_like(weight)
@@ -481,6 +489,7 @@ def backward(
                 scalarNumValidTokens_packed,
                 ignore_index,
                 tp_rank,
+                inv_temperature,
                 stream,
             )
             _get_bwd_config()._bwd_kernel[key] = bwd_kernel_compiled
@@ -501,6 +510,7 @@ def backward(
                 scalarNumValidTokens_packed,
                 ignore_index,
                 tp_rank,
+                inv_temperature,
                 stream,
             )
             # remove padding areas

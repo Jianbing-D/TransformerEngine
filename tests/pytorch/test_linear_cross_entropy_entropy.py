@@ -25,20 +25,21 @@ def get_device_arch_version():
 class TestLinearCrossEntropyWithEntropy:
 
     @staticmethod
-    def torch_reference(hidden, weight, labels, reduction, ignore_index):
+    def torch_reference(hidden, weight, labels, reduction, ignore_index, temperature=1.0):
         """Compute logprobs and entropy using vanilla PyTorch."""
         logits = hidden.to(torch.float32) @ weight.T.to(torch.float32)
+        scaled_logits = logits / temperature
         logprobs = torch.nn.functional.cross_entropy(
-            logits.view(-1, logits.shape[-1]),
+            scaled_logits.view(-1, scaled_logits.shape[-1]),
             labels.view(-1),
             reduction=reduction,
             ignore_index=ignore_index,
         )
 
-        # Entropy = logsumexp(logits) - sum(softmax * logits)
-        lse = torch.logsumexp(logits, dim=-1)  # [T]
-        softmax = torch.softmax(logits, dim=-1)  # [T, V]
-        entropy_b = (softmax * logits).sum(dim=-1)  # [T]
+        # Entropy = logsumexp(scaled_logits) - sum(softmax(scaled_logits) * scaled_logits)
+        lse = torch.logsumexp(scaled_logits, dim=-1)  # [T]
+        softmax = torch.softmax(scaled_logits, dim=-1)  # [T, V]
+        entropy_b = (softmax * scaled_logits).sum(dim=-1)  # [T]
         entropy = lse - entropy_b  # [T]
 
         return logprobs.to(torch.float32), entropy.to(torch.float32)
@@ -166,3 +167,98 @@ class TestLinearCrossEntropyWithEntropy:
         )
         assert isinstance(result, torch.Tensor)
         assert result.dim() == 0  # scalar
+
+    @pytest.mark.parametrize("temperature", [0.5, 1.0, 2.0])
+    @pytest.mark.parametrize("dtype", [torch.bfloat16])
+    @pytest.mark.parametrize("reduction", ["mean"])
+    def test_temperature_forward(self, dtype, reduction, temperature):
+        """Test forward with temperature scaling matches PyTorch reference."""
+        num_tokens, vocab_size, dim = 128, 1024, 256
+
+        hidden = torch.randn(num_tokens, dim, dtype=dtype, device="cuda")
+        weight = torch.randn(vocab_size, dim, dtype=dtype, device="cuda")
+        labels = torch.randint(0, vocab_size, (num_tokens,), dtype=torch.long, device="cuda")
+
+        # Fused with temperature
+        logprobs, entropy = linear_cross_entropy(
+            hidden, weight, labels,
+            reduction=reduction, return_entropy=True, temperature=temperature,
+        )
+        ref_logprobs, ref_entropy = self.torch_reference(
+            hidden, weight, labels, reduction, -100, temperature=temperature,
+        )
+
+        torch.testing.assert_close(logprobs, ref_logprobs, atol=1e-2, rtol=1e-2)
+        torch.testing.assert_close(entropy, ref_entropy.view(-1), atol=1e-2, rtol=1e-2)
+
+    @pytest.mark.parametrize("temperature", [0.5, 2.0])
+    @pytest.mark.parametrize("dtype", [torch.bfloat16])
+    @pytest.mark.parametrize("reduction", ["mean"])
+    def test_temperature_backward(self, dtype, reduction, temperature):
+        """Test backward gradients with temperature scaling."""
+        num_tokens, vocab_size, dim = 128, 1024, 256
+
+        hidden = torch.randn(num_tokens, dim, dtype=dtype, device="cuda").requires_grad_()
+        weight = torch.randn(vocab_size, dim, dtype=dtype, device="cuda").requires_grad_()
+        labels = torch.randint(0, vocab_size, (num_tokens,), dtype=torch.long, device="cuda")
+
+        # Fused path with temperature
+        logprobs, entropy = linear_cross_entropy(
+            hidden, weight, labels,
+            reduction=reduction, return_entropy=True, temperature=temperature,
+        )
+        loss = logprobs + entropy.mean()
+        loss.backward()
+        fused_d_hidden = hidden.grad.clone()
+        fused_d_weight = weight.grad.clone()
+
+        # Reference path with temperature
+        hidden.grad = None
+        weight.grad = None
+        logits = hidden.to(torch.float32) @ weight.T.to(torch.float32)
+        scaled_logits = logits / temperature
+        ref_logprobs = torch.nn.functional.cross_entropy(scaled_logits, labels, reduction=reduction)
+        lse = torch.logsumexp(scaled_logits, dim=-1)
+        softmax = torch.softmax(scaled_logits, dim=-1)
+        ref_entropy = lse - (softmax * scaled_logits).sum(dim=-1)
+        ref_loss = ref_logprobs + ref_entropy.mean()
+        ref_loss.backward()
+        ref_d_hidden = hidden.grad.clone()
+        ref_d_weight = weight.grad.clone()
+
+        torch.testing.assert_close(fused_d_hidden, ref_d_hidden, atol=5e-2, rtol=5e-2)
+        torch.testing.assert_close(fused_d_weight, ref_d_weight, atol=5e-2, rtol=5e-2)
+
+    @pytest.mark.parametrize("temperature", [0.5, 2.0])
+    @pytest.mark.parametrize("dtype", [torch.bfloat16])
+    @pytest.mark.parametrize("reduction", ["mean"])
+    def test_temperature_baseline(self, dtype, reduction, temperature):
+        """Test temperature with baseline (return_entropy=False) path."""
+        num_tokens, vocab_size, dim = 128, 1024, 256
+
+        hidden = torch.randn(num_tokens, dim, dtype=dtype, device="cuda").requires_grad_()
+        weight = torch.randn(vocab_size, dim, dtype=dtype, device="cuda").requires_grad_()
+        labels = torch.randint(0, vocab_size, (num_tokens,), dtype=torch.long, device="cuda")
+
+        # Fused baseline with temperature
+        logprobs = linear_cross_entropy(
+            hidden, weight, labels,
+            reduction=reduction, return_entropy=False, temperature=temperature,
+        )
+        logprobs.backward()
+        fused_d_hidden = hidden.grad.clone()
+        fused_d_weight = weight.grad.clone()
+
+        # Reference
+        hidden.grad = None
+        weight.grad = None
+        logits = hidden.to(torch.float32) @ weight.T.to(torch.float32)
+        scaled_logits = logits / temperature
+        ref_logprobs = torch.nn.functional.cross_entropy(scaled_logits, labels, reduction=reduction)
+        ref_logprobs.backward()
+        ref_d_hidden = hidden.grad.clone()
+        ref_d_weight = weight.grad.clone()
+
+        torch.testing.assert_close(logprobs, ref_logprobs, atol=1e-2, rtol=1e-2)
+        torch.testing.assert_close(fused_d_hidden, ref_d_hidden, atol=5e-2, rtol=5e-2)
+        torch.testing.assert_close(fused_d_weight, ref_d_weight, atol=5e-2, rtol=5e-2)

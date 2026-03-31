@@ -372,6 +372,51 @@ class TestFusedLinearCrossEntropyDataParallel:
         self.cleanup()
         custom_storage()
 
+    @pytest.mark.parametrize("temperature", [0.5, 1.0, 2.0])
+    @pytest.mark.parametrize("dtype", [torch.bfloat16])
+    @pytest.mark.parametrize("reduction", ["none", "mean", "sum"])
+    def test_temperature(self, dtype, reduction, temperature):
+        """Test forward and backward with temperature scaling."""
+        num_tokens, vocabsize, dim = 1024, 152064, 4096
+        hidden = (
+            torch.empty((num_tokens, dim), dtype=dtype, device="cuda")
+            .uniform_(-0.1, 0.1)
+            .requires_grad_()
+        )
+        weight = (
+            torch.empty((vocabsize, dim), dtype=dtype, device="cuda")
+            .uniform_(-0.1, 0.1)
+            .requires_grad_()
+        )
+        labels = torch.randint(0, vocabsize, (num_tokens,), dtype=torch.long, device="cuda")
+
+        # Reference: scale logits by 1/temperature before cross entropy
+        logits = hidden.to(torch.float32) @ weight.T.to(torch.float32)
+        scaled_logits = logits / temperature
+        torch_logprobs = torch.nn.functional.cross_entropy(
+            scaled_logits, labels, reduction=reduction,
+        )
+
+        custom_logprobs = linear_cross_entropy(
+            hidden, weight, labels, reduction=reduction, temperature=temperature,
+        )
+
+        torch.testing.assert_close(torch_logprobs, custom_logprobs)
+
+        # backward
+        g_logprobs = torch.empty_like(torch_logprobs).uniform_(-0.1, 0.1)
+
+        (d_torch_hidden, d_torch_weight) = torch.autograd.grad(
+            (torch_logprobs,), (hidden, weight), (g_logprobs,), retain_graph=False
+        )
+
+        (d_custom_hidden, d_custom_weight) = torch.autograd.grad(
+            (custom_logprobs,), (hidden, weight), (g_logprobs,), retain_graph=False
+        )
+
+        torch.testing.assert_close(d_torch_hidden, d_custom_hidden, atol=1e-3, rtol=1e-3)
+        torch.testing.assert_close(d_torch_weight, d_custom_weight, atol=1e-3, rtol=1e-3)
+
 
 @pytest.mark.skipif(_only_profile, reason="Skipping test in profile mode")
 @pytest.mark.skipif(
