@@ -559,6 +559,7 @@ class BwdPartialDlogits:
                 else:
                     cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs_all[(None, None, pidm_cta, None)], tMrDlogprobs, pred=tMCAcc_mask)
 
+                log2e_inv_t: cutlass.Float32 = self.LOG2_E * inv_temperature
                 tMrDlogprobs[0] *= inv_temperature
                 tMrDlogprobs[0] *= tMrLabels[0] != ignore_index
 
@@ -591,7 +592,7 @@ class BwdPartialDlogits:
                         + n_subtile * cute.size(tTMEM_load_rAcc, mode=[0])
                     )
                     for idx in cutlass.range_constexpr(cute.size(tTMEM_load_rAcc, mode=[0])):
-                        tTMEM_load_rAcc[idx] = ptx.fma(tTMEM_load_rAcc[idx], self.LOG2_E * inv_temperature,  -tMrAccu[0])
+                        tTMEM_load_rAcc[idx] = ptx.fma(tTMEM_load_rAcc[idx], log2e_inv_t,  -tMrAccu[0])
                         tTMEM_load_rAcc[idx] = cute.math.exp2(tTMEM_load_rAcc[idx], fastmath=True)
 
                         pos: cutlass.Int64 = pos_start + idx

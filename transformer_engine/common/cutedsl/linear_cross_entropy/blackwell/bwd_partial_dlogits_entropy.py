@@ -573,6 +573,7 @@ class BwdPartialDlogitsEntropy:
                 else:
                     cute.copy(tiled_copy_g2r_fp32, tMgDlogprobs_all[(None, None, pidm_cta, None)], tMrDlogprobs, pred=tMCAcc_mask)
 
+                log2e_inv_t: cutlass.Float32 = self.LOG2_E * inv_temperature
                 tMrDlogprobs[0] *= inv_temperature
                 tMrDentropy[0] *= inv_temperature
                 tMrDlogprobs[0] *= tMrLabels[0] != ignore_index
@@ -607,7 +608,7 @@ class BwdPartialDlogitsEntropy:
                     )
                     for idx in cutlass.range_constexpr(cute.size(tTMEM_load_rAcc, mode=[0])):
                         logit_val = tTMEM_load_rAcc[idx]
-                        tTMEM_load_rAcc[idx] = ptx.fma(tTMEM_load_rAcc[idx], self.LOG2_E * inv_temperature,  -tMrAccu[0])
+                        tTMEM_load_rAcc[idx] = ptx.fma(tTMEM_load_rAcc[idx], log2e_inv_t,  -tMrAccu[0])
                         tTMEM_load_rAcc[idx] = cute.math.exp2(tTMEM_load_rAcc[idx], fastmath=True)
                         # tTMEM_load_rAcc[idx] is now softmax_v = exp(z_v - LSE)
                         softmax_val = tTMEM_load_rAcc[idx]
@@ -619,7 +620,8 @@ class BwdPartialDlogitsEntropy:
                         # CE gradient: dlogprobs * (softmax - one_hot)
                         tTMEM_load_rAcc[idx] = ptx.fma(softmax_val, tMrDlogprobs[0], mask * -tMrDlogprobs[0])
                         # Entropy gradient: d_entropy * (-softmax) * (z - entropy_b)
-                        tTMEM_load_rAcc[idx] += -tMrDentropy[0] * softmax_val * (logit_val * inv_temperature - tMrEntropyB[0])
+                        logit_val = ptx.fma(logit_val, inv_temperature, -tMrEntropyB[0])
+                        tTMEM_load_rAcc[idx] = ptx.fma(-tMrDentropy[0], softmax_val * logit_val, tTMEM_load_rAcc[idx])
 
                     # R2S: retile, convert FP32→output dtype, store to SMEM
                     acc_vec = tiled_copy_r2s.retile(tTMEM_load_rAcc).load()

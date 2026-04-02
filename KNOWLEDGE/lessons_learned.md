@@ -162,3 +162,16 @@ When profiling 2-CTA kernels with NCU, the grid size doubles (`grid = tiles * cl
 
 ### L14: Persistent Scheduler Must Account for Cluster Size in Grid Calculation
 `get_grid_shape` computes `vacancies = sm_count * occupancy` as the max concurrent CTAs. With clusters of size K, each cluster occupies K SMs. The correct formula is `vacancies = (sm_count // cluster_m_size) * occupancy` — the number of clusters that fit, not the number of CTAs. Without this, the grid is K× too large, causing K waves instead of 1. On B200 (152 SMs) with cluster_size=2: grid went from 304→152 CTAs (152→76 clusters), duration from 154.62→136.86 μs (11.5% speedup).
+
+---
+
+## Testing Practices
+
+### L15: Run GPU Unit Tests Sequentially, Never in Parallel
+Multiple GPU test suites (e.g., `make unit-test-1gpu` and entropy tests) must NOT run concurrently. They contend on GPU memory and compute, causing OOM failures or incorrect results in both. Always wait for one test run to finish before starting the next.
+
+### L16: Autograd Gradients May Be Non-Contiguous
+When a custom `torch.autograd.Function` returns multiple outputs (e.g., `(logprobs, entropy)`), the gradient tensors received in `backward()` may be non-contiguous — for example, `dentropy` from `.sum()` backward produces an expanded/strided tensor. Always call `.contiguous()` on incoming gradient tensors before passing them to CUDA kernels that require contiguous memory.
+
+### L17: Non-Scalar Loss Requires `.sum()` Before `.backward()`
+When `reduction="none"`, the loss tensor (e.g., `logprobs`) has shape `(num_tokens,)`. Calling `.backward()` on a non-scalar tensor requires an explicit `gradient` argument, or the tensor must be reduced to a scalar first (e.g., `logprobs.sum() + entropy.sum()`). This applies in test code combining CE loss and entropy for backward verification.

@@ -3,8 +3,6 @@
 # See LICENSE for license information.
 
 import typing
-from dataclasses import dataclass, field
-import os
 from functools import lru_cache
 
 import cuda.bindings.driver as cuda
@@ -17,89 +15,20 @@ from cutlass.cute.runtime import from_dlpack
 
 from transformer_engine.common.cutedsl.linear_cross_entropy import utils
 from transformer_engine.common.triton import linear_cross_entropy as triton_kernels
-from transformer_engine.common.triton import linear_cross_entropy_entropy as triton_entropy_kernels
+from transformer_engine.common.triton import linear_cross_entropy_with_entropy as triton_entropy_kernels
 from transformer_engine.pytorch.ops.basic import cublas
-
-class Platform:
-    """
-    Singleton class for targeted GPU platform.
-    """
-
-    _instance: typing.Optional["Platform"] = None
-
-    def __new__(cls) -> "Platform":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self) -> None:
-        if getattr(self, "_initialized", False):
-            return
-
-        assert torch.cuda.is_available(), "CUDA is not available"
-        device = torch.cuda.current_device()
-        cc = torch.cuda.get_device_capability(device)
-
-        if cc[0] == 10:
-            from transformer_engine.common.cutedsl.linear_cross_entropy import blackwell as gpu_entry
-            self._gpu_entry = gpu_entry
-        else:
-            raise ValueError(f"Unsupported architecture: {cc[0]}")
-
-        self._initialized = True
-
-    @property
-    def gpu_entry(self) -> typing.Any:
-        return self._gpu_entry
-
-
-@lru_cache(maxsize=1)
-def _get_platform() -> Platform:
-    """
-    Helper function to lazy initialize the platform.
-    """
-    return Platform()
-
-@dataclass
-class FwdConfig:
-    """
-    The configuration for the forward pass.
-    """
-
-    _dedicated_stream: torch.cuda.Stream = field(default_factory=torch.cuda.Stream)
-    _dedicated_events: typing.List[torch.cuda.Event] = field(default_factory=list)
-    _initialized: bool = field(default=False)
-    _fwd_mainloop_kernels: typing.Dict[str, cute.kernel] = field(default_factory=dict)
-    _vocab_per_split: int = field(
-        default=int(os.environ.get("LCE_FWD_VOCAB_SPLIT_SIZE", 512 * 6))
-    )
-
-@dataclass
-class BwdConfig:
-    """
-    The configuration for the backward pass.
-    """
-
-    _bwd_kernel: typing.Dict[str, cute.kernel] = field(default_factory=dict)
-    _vocab_per_split: int = field(
-        default=int(os.environ.get("LCE_BWD_VOCAB_SPLIT_SIZE", 512 * 7))
-    )
-    _backward_method: utils.BackwardMethodEnum = field(
-        default=utils.BackwardMethodEnum.kDlogitsSplitN
-    )
+from transformer_engine.pytorch.cutedsl.lce_common import (
+    _get_impl,
+    FwdConfig,
+    BwdConfig,
+)
 
 @lru_cache(maxsize=1)
 def _get_fwd_config() -> FwdConfig:
-    """
-    Helper function to lazy initialize the forward configuration.
-    """
     return FwdConfig()
 
 @lru_cache(maxsize=1)
 def _get_bwd_config() -> BwdConfig:
-    """
-    Helper function to lazy initialize the backward configuration.
-    """
     return BwdConfig()
 
 def forward(
@@ -232,7 +161,7 @@ def forward(
     # only the number of tokens can vary
     key = f"entropy+vocab_size:{vocab_size}+dim:{dim}+dtype:{hidden_view.dtype}"
     if _get_fwd_config()._fwd_mainloop_kernels.get(key) is None:
-        fwd_mainloop_kernel = _get_platform().gpu_entry.fwd_mainloop_entropy.FwdMainLoopEntropy(
+        fwd_mainloop_kernel = _get_impl().gpu_entry.fwd_mainloop_entropy.FwdMainLoopEntropy(
             vocab_per_split=_get_fwd_config()._vocab_per_split
         )
         fwd_mainloop_compiled_kernel = cute.compile(
@@ -407,6 +336,8 @@ def backward(
     vocab_size, _ = weight.shape
 
     REDUCTION = utils.str_to_reduction_enum(reduction)
+    dlogprobs = dlogprobs.contiguous()
+    dentropy = dentropy.contiguous()
     dlogprobs_view = dlogprobs.view(-1)
     dentropy_view = dentropy.view(-1)
     assert (
@@ -472,7 +403,7 @@ def backward(
             f"entropy+vocab_size:{vocab_size}+dim:{dim}+reduction:{REDUCTION}+dtype:{hidden_view.dtype}"
         )
         if _get_bwd_config()._bwd_kernel.get(key) is None:
-            bwd_kernel = _get_platform().gpu_entry.bwd_partial_dlogits_entropy.BwdPartialDlogitsEntropy(
+            bwd_kernel = _get_impl().gpu_entry.bwd_partial_dlogits_entropy.BwdPartialDlogitsEntropy(
                 reduction=REDUCTION.value, vocab_per_split=vocab_per_split,
             )
             bwd_kernel_compiled = cute.compile(

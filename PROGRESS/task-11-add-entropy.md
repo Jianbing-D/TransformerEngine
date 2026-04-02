@@ -94,8 +94,8 @@ EXISTING (untouched):
 NEW (copies with entropy):
   common/cutedsl/linear_cross_entropy/blackwell/fwd_mainloop_entropy.py        # FwdMainLoopEntropy
   common/cutedsl/linear_cross_entropy/blackwell/bwd_partial_dlogits_entropy.py # BwdPartialDlogitsEntropy
-  common/triton/linear_cross_entropy_entropy.py                                # entropy-aware epilogues
-  pytorch/cutedsl/linear_cross_entropy_entropy_entry.py                        # forward_entropy(), backward_entropy()
+  common/triton/linear_cross_entropy_with_entropy.py                                # entropy-aware epilogues
+  pytorch/cutedsl/linear_cross_entropy_with_entropy_entry.py                        # forward_entropy(), backward_entropy()
 
 MODIFIED (torch interface only):
   pytorch/linear_cross_entropy.py   # Add return_entropy option, new autograd class
@@ -177,11 +177,11 @@ See diagram: `entropy-lce-dataflow.drawio`
 |--------|------|-------------|
 | **NEW** | `common/cutedsl/.../blackwell/fwd_mainloop_entropy.py` | Copy of fwd_mainloop.py + `_entropy_b` accumulation |
 | **NEW** | `common/cutedsl/.../blackwell/bwd_partial_dlogits_entropy.py` | Copy of bwd_partial_dlogits.py + entropy gradient |
-| **NEW** | `common/triton/linear_cross_entropy_entropy.py` | Copy of epilogues + `_entropy_b` reduction |
-| **NEW** | `pytorch/cutedsl/linear_cross_entropy_entropy_entry.py` | Copy of entry point, wired to entropy kernels |
+| **NEW** | `common/triton/linear_cross_entropy_with_entropy.py` | Copy of epilogues + `_entropy_b` reduction |
+| **NEW** | `pytorch/cutedsl/linear_cross_entropy_with_entropy_entry.py` | Copy of entry point, wired to entropy kernels |
 | **MODIFY** | `pytorch/linear_cross_entropy.py` | Add `return_entropy` option + new autograd class |
 | **MODIFY** | `common/cutedsl/.../blackwell/__init__.py` | Export new kernel classes |
-| **NEW** | `tests/pytorch/test_linear_cross_entropy_entropy.py` | Entropy-specific tests |
+| **NEW** | `tests/pytorch/test_linear_cross_entropy_with_entropy.py` | Entropy-specific tests |
 
 ### Untouched Files (explicitly)
 
@@ -208,7 +208,7 @@ See diagram: `entropy-lce-dataflow.drawio`
 
 ### Phase 2: Forward — New Triton epilogues
 
-- [x]2.1 Copy epilogues from `linear_cross_entropy.py` → `linear_cross_entropy_entropy.py`
+- [x]2.1 Copy epilogues from `linear_cross_entropy.py` → `linear_cross_entropy_with_entropy.py`
 - [x]2.2 Create `forward_dp_epilogue_entropy`:
   - Add `_entropy_b` input params (ptr + strides)
   - Add `global_entropy_b_ptr`, `global_entropy_ptr` output params
@@ -222,7 +222,7 @@ See diagram: `entropy-lce-dataflow.drawio`
 
 ### Phase 3: Forward — New entry point
 
-- [x]3.1 Copy `linear_cross_entropy_entry.py` → `linear_cross_entropy_entropy_entry.py`
+- [x]3.1 Copy `linear_cross_entropy_entry.py` → `linear_cross_entropy_with_entropy_entry.py`
 - [x]3.2 Import `FwdMainLoopEntropy` and new Triton epilogues
 - [x]3.3 In `forward_entropy()`:
   - Allocate `_entropy_b[T, S]`, `entropy_b[T]`, `entropy[T]`
@@ -269,7 +269,7 @@ make stats-1gpu       # Performance + storage stats (single GPU)
 make stats-4gpu       # Performance + storage stats (multi GPU)
 ```
 
-- [x]6.1 Create `tests/pytorch/test_linear_cross_entropy_entropy.py`:
+- [x]6.1 Create `tests/pytorch/test_linear_cross_entropy_with_entropy.py`:
   - Reference: compute entropy as `logsumexp(logits) - sum(softmax * logits)`
   - Compare fused entropy against reference for various problem sizes
   - Test with different reductions (none, sum, mean)
@@ -280,6 +280,14 @@ make stats-4gpu       # Performance + storage stats (multi GPU)
 - [x]6.3 Run `make unit-test-1gpu` — existing tests must still pass (we didn't touch existing code)
 - [x]6.4 Run `make unit-test-4gpu` — multi-GPU tests
 - [x]6.5 Add entropy-specific test targets to Makefile if needed
+- [x]6.6 Add TP test class (`TestLinearCrossEntropyWithEntropyTensorParallel`):
+  - Torch TP reference autograd with entropy gradient math
+  - `test_torch_tp_vs_single_gpu`, `test_correctness`, `test_performance`, `test_storage`
+- [x]6.7 Add SP test class (`TestLinearCrossEntropyWithEntropySequenceParallel`):
+  - Torch SP reference autograd with all-gather hidden + reduce-scatter d_hidden
+  - `test_torch_sp_vs_single_gpu`, `test_correctness`, `test_performance`, `test_storage`
+- [x]6.8 Add Profile test class (`TestLinearCrossEntropyWithEntropyProfile`):
+  - NVTX-annotated profiling comparing baseline vs entropy paths
 
 **Important**: Always use `timeout 3m` wrapper when running tests manually. Unit tests normally complete within 3 minutes; if they hang, it signals a kernel deadlock.
 
@@ -303,6 +311,8 @@ make ncu-bwd          # Full NCU report for backward kernel
 
 ## Performance Results
 
+### Entropy overhead
+
 Benchmark problem: `((1, 4096), 129280, 7168)`, BF16, Blackwell SM100.
 
 | Metric | Baseline | Entropy | Overhead |
@@ -310,12 +320,102 @@ Benchmark problem: `((1, 4096), 129280, 7168)`, BF16, Blackwell SM100.
 | Forward only | 4.69 ms | 4.81 ms | **2.5%** |
 | Forward + Backward | 18.60 ms | 19.43 ms | **4.5%** |
 
-Both well under the 5% target. The GEMM-bound nature of the kernels means epilogue additions are negligible.
+Both well under the 5% target. When `return_entropy=False` (default), the original code path is taken — **zero overhead**.
 
-When `return_entropy=False` (default), the original code path is taken — **zero overhead**.
+### Temperature overhead
+
+Added `temperature: float = 1.0` parameter to both baseline and entropy paths. CUDA event benchmarks (same problem size):
+
+| Path | T=1.0 | T=0.5 | Delta |
+|------|-------|-------|-------|
+| baseline fwd | 5.19 ms | 5.42 ms | +4.4% (noise) |
+| entropy fwd | 5.41 ms | 5.45 ms | +0.6% |
+| baseline fwd+bwd | 20.90 ms | 19.62 ms | −6.1% (noise) |
+| entropy fwd+bwd | 20.11 ms | 20.00 ms | −0.6% |
+
+**Temperature overhead is within measurement noise** — no measurable cost.
+
+### NCU profiling analysis
+
+| Metric | Forward (`fwd_mainloop`) | Backward (`bwd_partial_dlogits`) |
+|--------|--------------------------|----------------------------------|
+| Duration | 4.49 ms | 139 μs (×42 splits) |
+| TC pipe utilization | **92.7%** | **87.0%** |
+| Memory throughput | 46.7% | 47.1% |
+| FMA pipe utilization | 7.1% | 1.7% |
+| ALU pipe utilization | 9.3% | 3.8% |
+| Registers/thread | 212 | 247 |
+| SMEM/block | 132 KB | 181 KB |
+| Occupancy | 12.5% | 12.5% |
+| Top stall: Long Scoreboard | 47% | 73% |
+| Top stall: Barrier | 32% | 19% |
+
+**Both kernels are Tensor-Core-bound at 87–93% TC utilization — near hardware peak.**
+
+- Temperature multiply (`scaled_logit = logit * inv_temperature`) hits the FMA pipe which has 83–96% headroom — completely hidden by TC.
+- Entropy epilogue additions (+1 FMA for `_entropy_b`, +2 FMAs for backward gradient) also land on the underutilized FMA/ALU pipes.
+- Backward kernel: precomputed `log2e_inv_t = LOG2_E * inv_temperature` once outside the 64-iteration unrolled inner loop to avoid redundant scalar multiplies.
+- **No further optimization possible** for temperature/entropy — the bottleneck is the GEMM (TC pipe), and the epilogue work is fully hidden.
 
 ### Test Results
 
-- `make unit-test-1gpu`: 75 passed (existing tests unaffected)
+- `make unit-test-1gpu`: 84 passed (75 original + 9 temperature tests)
 - `make unit-test-4gpu`: 88 passed
-- Entropy tests: 15 passed (forward correctness, backward correctness, return_entropy=False, kernel launch)
+- Entropy tests: 22 passed (15 original + 7 temperature tests covering T=0.5/1.0/2.0, forward/backward, baseline/entropy paths)
+
+### Test Coverage Update
+
+Expanded `test_linear_cross_entropy_with_entropy.py` to mirror all 4 test classes from the original test file:
+
+| Test Class | Scope | Tests |
+|------------|-------|-------|
+| `TestLinearCrossEntropyWithEntropyDataParallel` | Single GPU | kernel_launch, correctness (fwd+bwd), performance, storage, return_entropy_false, temperature |
+| `TestLinearCrossEntropyWithEntropyTensorParallel` | Multi-GPU TP | torch_tp_vs_single_gpu, correctness (fwd+bwd), performance, storage |
+| `TestLinearCrossEntropyWithEntropySequenceParallel` | Multi-GPU SP | torch_sp_vs_single_gpu, correctness (fwd+bwd), performance, storage |
+| `TestLinearCrossEntropyWithEntropyProfile` | Single GPU (ONLY_PROFILE=1) | NVTX-annotated baseline vs entropy comparison |
+
+TP/SP reference autograd classes implement full entropy gradient: `dH/dz = -softmax * (z - entropy_b)` with temperature support. Performance/storage tests compare baseline vs entropy to measure overhead.
+
+---
+
+## Phase 8: Deduplicate Platform/Implementation Singletons
+
+### Problem
+
+Three singletons performed GPU arch detection independently:
+
+| Class | File | Duty |
+|---|---|---|
+| `Implementation` | `pytorch/linear_cross_entropy.py` | Arch gate → imports entry modules, stores function pointers |
+| `Platform` | `pytorch/cutedsl/lce_common.py` | Arch gate (redundant) → imports `blackwell` module |
+
+`Platform` duplicated `Implementation`'s arch detection. Entry files are already arch-specific (only imported on correct arch), yet `Platform` rechecked `cc[0]`.
+
+### Solution: Single arch gate in `Implementation`, moved to `lce_common.py`
+
+Move `Implementation` into `lce_common.py` so both the torch API file and the entry files can import from the same place — no circular dependency. Remove `Platform` entirely. `Implementation` becomes the single place that:
+1. Detects GPU arch
+2. Imports the correct kernel module (`blackwell`, future `hopper`)  
+3. Imports the correct entry modules
+4. Stores `gpu_entry` + function pointers
+
+Dependency graph (no cycles):
+```
+linear_cross_entropy.py ──→ lce_common.py ──(lazy)──→ entry modules
+entry modules ─────────────→ lce_common.py
+```
+
+### Action Plan
+
+- [x] 8.1 Move `Implementation` class and `_get_impl()` from `linear_cross_entropy.py` → `lce_common.py`
+  - Add `self.gpu_entry` attribute storing the arch-specific kernel module
+  - Remove `Platform` class and `get_platform()` from `lce_common.py`
+- [x] 8.2 Update `linear_cross_entropy.py`:
+  - Remove `Implementation` class and `_get_impl()` definition
+  - Import `_get_impl` from `lce_common`
+- [x] 8.3 Update `linear_cross_entropy_entry.py`:
+  - Replace `from lce_common import get_platform` → `from lce_common import _get_impl`
+  - Replace `_get_platform().gpu_entry.X` → `_get_impl().gpu_entry.X`
+- [x] 8.4 Update `linear_cross_entropy_with_entropy_entry.py`:
+  - Same as 8.3
+- [x] 8.5 Verify: all unit tests pass (84+49 DP, 88+46 TP+SP)

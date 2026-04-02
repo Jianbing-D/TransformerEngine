@@ -6,52 +6,9 @@ Fuse cross entropy with linear layer.
 """
 
 import typing
-from functools import lru_cache
 import torch
 
-class Implementation:
-    """
-    Singleton class for targeted GPU platform.
-    """
-
-    _instance: typing.Optional["Implementation"] = None
-
-    def __new__(cls) -> "Implementation":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self) -> None:
-        if getattr(self, "_initialized", False):
-            return
-
-        assert torch.cuda.is_available(), "CUDA is not available"
-        device = torch.cuda.current_device()
-        cc = torch.cuda.get_device_capability(device)
-
-        if cc[0] == 10:
-            from transformer_engine.pytorch.cutedsl import linear_cross_entropy_entry as impl
-            from transformer_engine.pytorch.cutedsl import linear_cross_entropy_entropy_entry as entropy_impl
-            self.forward_func: typing.Callable[..., typing.Any] = impl.forward
-            self.backward_func: typing.Callable[..., typing.Any] = impl.backward
-            self.forward_entropy_func: typing.Callable[..., typing.Any] = entropy_impl.forward
-            self.backward_entropy_func: typing.Callable[..., typing.Any] = entropy_impl.backward
-        else:
-            raise ValueError(f"Unsupported architecture: {cc[0]}. Shall be delegated to Triton")
-
-        self._initialized = True
-
-    @property
-    def impl(self) -> typing.Any:
-        return self._impl
-
-
-@lru_cache(maxsize=1)
-def _get_impl() -> Implementation:
-    """
-    Helper function to lazy initialize the Implementation.
-    """
-    return Implementation()
+from transformer_engine.pytorch.cutedsl.lce_common import _get_impl
 
 class LinearCrossEntropy(torch.autograd.Function):
     """
@@ -230,9 +187,30 @@ class LinearCrossEntropy(torch.autograd.Function):
 
 class LinearCrossEntropyWithEntropy(torch.autograd.Function):
     """
-    Custom autograd function for linear cross entropy with entropy calculation.
-    Returns (logprobs, entropy) in forward pass.
-    Accepts (dlogprobs, dentropy) in backward pass.
+    Custom autograd function for fused linear cross entropy with Shannon entropy.
+
+    Equivalent PyTorch logic:
+        ```python
+        def torch_lce_with_entropy(hidden, weight, labels, temperature=1.0):
+            logits = hidden @ weight.T
+            scaled_logits = logits / temperature
+            logprobs = cross_entropy(scaled_logits, labels)
+            entropy = logsumexp(scaled_logits) - (softmax(scaled_logits) * scaled_logits).sum(-1)
+            return logprobs, entropy
+        ```
+
+    Forward returns (logprobs, entropy) where entropy has shape (num_tokens,).
+    Backward accepts (dlogprobs, dentropy) and computes combined gradients:
+        d_logits = dlogprobs * (softmax - one_hot)                    # CE term
+                 + dentropy * (-softmax) * (scaled_logit - entropy_b)  # entropy term
+
+    The entropy computation is fused into the existing forward/backward kernels:
+    - Forward: adds ~1 FMA per element to accumulate entropy_b = E_p[z] alongside LSE.
+    - Backward: adds ~2 FMAs per element for the entropy gradient term.
+    Both are hidden behind the dominant GEMM (Tensor Core) cost — <5% overhead.
+
+    Supports DP, TP, and SP modes identically to LinearCrossEntropy.
+    When return_entropy=False (default), LinearCrossEntropy is used instead — zero overhead.
     """
 
     @staticmethod
